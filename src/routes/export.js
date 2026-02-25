@@ -42,7 +42,9 @@ router.post('/', async (req, res) => {
   try {
     // Step 1: Fetch custom field definitions
     sse.progress('Fetching custom field definitions…', 5);
-    const customFields = await fetchAllCustomFields(pbFetch, withRetry);
+    const customFields = await fetchAllCustomFields(pbFetch, withRetry, (fetched) => {
+      sse.progress(`Fetching custom field definitions… (${fetched} found)`, 5);
+    });
     sse.progress(`Found ${customFields.length} custom fields`, 10);
 
     // Step 2: Fetch all companies (paginated)
@@ -87,7 +89,7 @@ router.post('/', async (req, res) => {
 
 // ---------------------------------------------------------------------------
 
-async function fetchAllCustomFields(pbFetch, withRetry) {
+async function fetchAllCustomFields(pbFetch, withRetry, onProgress = () => {}) {
   const fields = [];
   let offset = 0;
   const limit = 100;
@@ -99,6 +101,7 @@ async function fetchAllCustomFields(pbFetch, withRetry) {
       `fetch custom fields offset ${offset}`
     );
     if (response.data?.length) fields.push(...response.data);
+    onProgress(fields.length);
     hasMore = !!(response.links?.next) && fields.length < 1000;
     offset += limit;
   }

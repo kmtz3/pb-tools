@@ -15,6 +15,9 @@ function startSSE(res) {
   res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
   res.flushHeaders();
 
+  const heartbeat = setInterval(() => res.write(':\n\n'), 25000);
+  res.on('close', () => clearInterval(heartbeat));
+
   const send = (event, data) => {
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
