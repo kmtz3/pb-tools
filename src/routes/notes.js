@@ -200,7 +200,7 @@ async function buildV1SourceMap(pbFetch, withRetry) {
 /** Transform a single v2 note object to a CSV row object. */
 function buildNoteRow(note, userCache, companyCache, sourceMap) {
   const f = note.fields || {};
-  const rels = Array.isArray(note.relationships) ? note.relationships : [];
+  const rels = Array.isArray(note.relationships?.data) ? note.relationships.data : [];
 
   // Resolve customer relationship
   const customerRel = rels.find((r) => r.type === 'customer');
