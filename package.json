@@ -1,0 +1,21 @@
+{
+  "name": "pb-companies",
+  "version": "1.0.0",
+  "description": "Productboard Companies Import/Export Tool",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "papaparse": "^5.4.1",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

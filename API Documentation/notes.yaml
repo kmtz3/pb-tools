@@ -1,0 +1,2911 @@
+openapi: 3.1.1
+info:
+  title: pb-backend API v2
+  description: TBD
+  version: 2.0.0
+  contact:
+    name: Productboard Support
+    url: https://support.productboard.com
+    email: support@productboard.com
+  license:
+    name: Productboard Proprietary
+    url: https://www.productboard.com/
+servers:
+  - url: https://api.productboard.com/v2
+    description: Production server
+security:
+  - BearerAuth: []
+  - OAuth2:
+      - notes:read
+      - notes:write
+      - notes:delete
+paths:
+  /notes/configurations:
+    get:
+      summary: List note configurations
+      description: |
+        Returns configuration metadata for note types, including supported fields, patch operations, and validation rules.
+
+        Use this endpoint to programmatically discover which fields are available, what note types are supported,
+        and how your workspace is configured.
+
+        ### Filtering by Type
+
+        By default, this endpoint returns configurations for all available note types (`simple`, `conversation`, `opportunity`).
+
+        You can filter results to specific types using the optional `type` or `type[]` query parameters:
+
+        **Array format (recommended):**
+        - `/v2/notes/configurations?type[]=simple` - Returns only simple note configuration
+        - `/v2/notes/configurations?type[]=simple&type[]=conversation` - Returns simple and conversation note configurations
+
+        **Comma-separated format (legacy):**
+        - `/v2/notes/configurations?type=simple` - Returns only simple note configuration
+        - `/v2/notes/configurations?type=simple,conversation` - Returns simple and conversation note configurations
+
+        Both formats are supported. The array format (`type[]`) is recommended for better compatibility with standard query parameter parsing.
+      operationId: listNoteConfigurations
+      parameters:
+        - name: type[]
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+          description: |
+            Optional array of entity types to filter results (recommended format).
+            Valid values: simple, conversation, opportunity, feature, initiative
+            Example: type[]=simple&type[]=conversation
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+          description: |
+            Optional comma-separated list of entity types to filter results (legacy format).
+            Valid values: simple, conversation, opportunity, feature, initiative
+            Example: simple,conversation
+            Note: The type[] parameter is recommended over this parameter for better compatibility.
+      responses:
+        '200':
+          description: A list of entity configurations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Configuration'
+              examples:
+                all-types:
+                  summary: All entity configurations
+                  value:
+                    data:
+                      - type: simple
+                        fields:
+                          name:
+                            id: name
+                            name: Name
+                            path: /fields/name
+                            schema:
+                              type: string
+                            lifecycle:
+                              create:
+                                set: true
+                              update:
+                                set: true
+                              patch:
+                                set: true
+                            constraints:
+                              required: true
+                      - type: conversation
+                        fields:
+                          name:
+                            id: name
+                            name: Name
+                            path: /fields/name
+                            schema:
+                              type: string
+                            lifecycle:
+                              create:
+                                set: true
+                              update:
+                                set: true
+                              patch:
+                                set: true
+                            constraints:
+                              required: true
+                      - type: opportunity
+                        fields:
+                          name:
+                            id: name
+                            name: Name
+                            path: /fields/name
+                            schema:
+                              type: string
+                            lifecycle:
+                              create:
+                                set: true
+                              update:
+                                set: true
+                              patch:
+                                set: true
+                            constraints:
+                              required: true
+                filtered:
+                  summary: Filtered entity configurations
+                  value:
+                    data:
+                      - type: simple
+                        fields:
+                          name:
+                            id: name
+                            name: Name
+                            path: /fields/name
+                            schema:
+                              type: string
+                            lifecycle:
+                              create:
+                                set: true
+                              update:
+                                set: true
+                              patch:
+                                set: true
+                            constraints:
+                              required: true
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '408':
+          $ref: '#/components/responses/RequestTimeoutResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerErrorResponse'
+  /notes/configurations/{type}:
+    get:
+      summary: Get note configuration by type
+      description: |
+        Returns configuration metadata for a specific note type, including supported fields, patch operations, and validation rules.
+
+        Use this endpoint to programmatically discover the configuration for a specific note type.
+      operationId: getNoteConfiguration
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - simple
+              - conversation
+              - opportunity
+          description: |
+            The entity type to retrieve configuration for.
+      responses:
+        '200':
+          description: Configuration for the specified entity type
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Configuration'
+              examples:
+                simple:
+                  summary: Simple note configuration
+                  value:
+                    data:
+                      type: simple
+                      fields:
+                        name:
+                          id: name
+                          name: Name
+                          path: /fields/name
+                          schema:
+                            type: string
+                          lifecycle:
+                            create:
+                              set: true
+                            update:
+                              set: true
+                            patch:
+                              set: true
+                          constraints:
+                            required: true
+                conversation:
+                  summary: Conversation note configuration
+                  value:
+                    data:
+                      type: conversation
+                      fields:
+                        name:
+                          id: name
+                          name: Name
+                          path: /fields/name
+                          schema:
+                            type: string
+                          lifecycle:
+                            create:
+                              set: true
+                            update:
+                              set: true
+                            patch:
+                              set: true
+                          constraints:
+                            required: true
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '408':
+          $ref: '#/components/responses/RequestTimeoutResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerErrorResponse'
+  /notes:
+    post:
+      summary: Create note
+      description: |
+        Creates a new note in your workspace.
+        Notes represent individual pieces of feedback from customers, internal teams, or external systems.
+
+        You must specify the `type` of note you're creating:
+        - `"simple"` – for plain, unstructured notes
+        - `"conversation"` – for structured messages (e.g., from chat, email, or support systems)
+
+        > ⚠️ Notes of type `opportunity` cannot be created via the API.
+
+        ## Field Requirements and Configuration
+
+        The `fields.name` attribute is **required** for all note types.
+        Other fields depend on the selected note type and your workspace configuration.
+        Use the [`/v2/notes/configurations`](#/paths/~1v2~1notes~1configurations/get) endpoint to discover available fields for each type.
+
+        Notes can also be linked to Customers entities or Product links (like features) via relationships.
+      operationId: createNote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  type: object
+                  required:
+                    - type
+                    - fields
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - simple
+                        - conversation
+                      example: simple
+                    fields:
+                      $ref: '#/components/schemas/NoteCreateOrUpdateFields'
+                    relationships:
+                      type: array
+                      description: |
+                        Optional relationships to create with the note.
+                        Used for atomically linking notes to customers (users or companies) and product links (like features).
+                      items:
+                        $ref: '#/components/schemas/NoteCreateRelationship'
+            examples:
+              simple-note-basic-fields:
+                summary: Create a simple note with basic fields
+                value:
+                  data:
+                    type: simple
+                    fields:
+                      name: New note
+                      content: This is a new note content.
+              simple-note-advanced-fields:
+                summary: Create a simple note with advanced fields
+                value:
+                  data:
+                    type: simple
+                    fields:
+                      name: New note
+                      tags:
+                        - name: product
+                        - name: q2
+                      content: This is a new note content.
+                      source:
+                        id: src456
+                        origin: crm
+                        url: https://example.com/new_note
+                      owner:
+                        email: jane.doe@example.com
+                      creator:
+                        email: john.doe@example.com
+              simple-note-with-relationships:
+                summary: Create a simple note with customer and feature relationships
+                value:
+                  data:
+                    type: simple
+                    fields:
+                      name: Note with relationships
+                      content: This note is linked to a customer and features
+                    relationships:
+                      - type: customer
+                        target:
+                          id: 123e4567-e89b-12d3-a456-426614174000
+                          type: user
+                      - type: link
+                        target:
+                          id: 223e4567-e89b-12d3-a456-426614174001
+                          type: link
+                      - type: link
+                        target:
+                          id: 323e4567-e89b-12d3-a456-426614174002
+                          type: link
+              conversation:
+                summary: Create a conversation note
+                value:
+                  data:
+                    type: conversation
+                    fields:
+                      name: Conversation Note
+                      content:
+                        - externalId: '000'
+                          content: Hello
+                          timestamp: '2023-10-01T11:00:00Z'
+                          authorType: agent
+                        - externalId: '111'
+                          content: world
+                          authorName: John Doe
+                          authorType: customer
+                          timestamp: '2023-10-01T12:00:00Z'
+                      tags:
+                        - name: support
+                      owner:
+                        email: john.doe@example.com
+                      creator:
+                        email: john.doe@example.com
+              conversation-with-relationships:
+                summary: Create a conversation note with company customer relationship
+                value:
+                  data:
+                    type: conversation
+                    fields:
+                      name: Conversation Note with Company
+                      content:
+                        - externalId: '000'
+                          content: Hello from company
+                          timestamp: '2023-10-01T11:00:00Z'
+                          authorType: agent
+                    relationships:
+                      - type: customer
+                        target:
+                          id: 123e4567-e89b-12d3-a456-426614174100
+                          type: company
+      responses:
+        '201':
+          description: Note created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteReferenceResponse'
+              examples:
+                simple:
+                  summary: Simple note response
+                  value:
+                    data:
+                      id: 123e4567-e89b-12d3-a456-426614174000
+                      type: simple
+                      links:
+                        self: https://api.productboard.com/v2/notes/123e4567-e89b-12d3-a456-426614174000
+                conversation:
+                  summary: Conversation note response
+                  value:
+                    data:
+                      id: 223e4567-e89b-12d3-a456-426614174000
+                      type: conversation
+                      links:
+                        self: https://api.productboard.com/v2/notes/223e4567-e89b-12d3-a456-426614174001
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '408':
+          $ref: '#/components/responses/RequestTimeoutResponse'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerErrorResponse'
+    get:
+      summary: List notes
+      description: |
+        Retrieves a list of notes from your workspace.
+
+        - Notes are sorted by creation date, newest first.
+        - You can filter results using query parameters like `archived`, `processed`, `owner[email]`, `source[recordId]`, or date/time ranges.
+        - Use the `pageCursor` parameter to paginate through results.
+        - Use the `fields` query parameter to optimize response size (default: all non-null fields, use `fields=all` to include null values, or `fields=name,tags` for specific fields).
+
+        > To discover available fields
+        use the [`/v2/notes/configurations`](#/paths/~1v2~1notes~1configurations/get) endpoint.
+
+        ### Date/Time Filtering
+
+        You can filter notes by creation or update timestamps using ISO-8601 date-time format:
+        - Use `createdFrom` and `createdTo` to filter by creation date (inclusive bounds)
+        - Use `updatedFrom` and `updatedTo` to filter by update date (inclusive bounds)
+        - All date/time filters can be combined with each other and with other filters
+        - Date ranges must be valid (From <= To) or a 400 error will be returned
+
+        ### Filtering combinations
+
+        Some combinations of the `archived` and `processed` flags result in empty or unexpected results.
+        Use the following table to understand which notes are returned based on the filter values:
+
+        | `archived` | `processed` | Result                    |
+        |------------|-------------|---------------------------|
+        | –          | –           | All notes                 |
+        | `true`     | `true`      | None                      |
+        | `true`     | `false`     | Archived                  |
+        | `false`    | `true`      | Processed                 |
+        | `false`    | `false`     | Unprocessed               |
+        | `true`     | –           | Archived                  |
+        | `false`    | –           | Processed + unprocessed   |
+        | –          | `true`      | Processed                 |
+        | –          | `false`     | Archived + unprocessed    |
+
+        > **Note**: Archived notes always return `processed: false` in the API response, regardless of their actual processing state. This is a known limitation of the system.
+      operationId: listNotes
+      parameters:
+        - name: pageCursor
+          in: query
+          description: Cursor for pagination.
+          required: false
+          schema:
+            type: string
+        - name: archived
+          in: query
+          description: Filter notes by archived status.
+          required: false
+          schema:
+            type: boolean
+            example: true
+        - name: processed
+          in: query
+          description: Filter notes by processed status.
+          required: false
+          schema:
+            type: boolean
+            example: true
+        - name: owner[id]
+          in: query
+          description: Filter notes by owner UUID.
+          required: false
+          schema:
+            type: string
+            format: uuid
+          example: e9f642b4-f0f8-4acc-ba0c-acc76453f60e
+        - name: owner[email]
+          in: query
+          description: Filter notes by owner email.
+          required: false
+          schema:
+            type: string
+            example: jane.doe@example.com
+        - name: creator[id]
+          in: query
+          description: Filter notes by creator UUID.
+          required: false
+          schema:
+            type: string
+            format: uuid
+          example: e9f642b4-f0f8-4acc-ba0c-acc76453f60e
+        - name: creator[email]
+          in: query
+          description: Filter notes by creator email.
+          required: false
+          schema:
+            type: string
+            example: john.doe@example.com
+        - name: source[recordId]
+          in: query
+          description: |
+            Filter notes by the external source record ID.
+            Returns all notes where the source.recordId matches the provided value.
+            Multiple notes can share the same recordId and all will be returned.
+            Can be combined with other filters (e.g., archived, processed, owner[email]).
+          required: false
+          schema:
+            type: string
+            example: ticket-12345
+        - name: createdFrom
+          in: query
+          description: |
+            Filter notes created on or after this date/time (inclusive).
+            Must be in ISO-8601 format (e.g., "2023-10-01T12:00:00Z").
+            Can be combined with createdTo to define a range.
+          required: false
+          schema:
+            type: string
+            format: date-time
+            example: '2023-10-01T00:00:00Z'
+        - name: createdTo
+          in: query
+          description: |
+            Filter notes created on or before this date/time (inclusive).
+            Must be in ISO-8601 format (e.g., "2023-12-31T23:59:59Z").
+            Can be combined with createdFrom to define a range.
+          required: false
+          schema:
+            type: string
+            format: date-time
+            example: '2023-12-31T23:59:59Z'
+        - name: updatedFrom
+          in: query
+          description: |
+            Filter notes updated on or after this date/time (inclusive).
+            Must be in ISO-8601 format (e.g., "2023-10-01T12:00:00Z").
+            Can be combined with updatedTo to define a range.
+          required: false
+          schema:
+            type: string
+            format: date-time
+            example: '2023-10-01T00:00:00Z'
+        - name: updatedTo
+          in: query
+          description: |
+            Filter notes updated on or before this date/time (inclusive).
+            Must be in ISO-8601 format (e.g., "2023-12-31T23:59:59Z").
+            Can be combined with updatedFrom to define a range.
+          required: false
+          schema:
+            type: string
+            format: date-time
+            example: '2023-12-31T23:59:59Z'
+        - $ref: '#/components/parameters/fields'
+      responses:
+        '200':
+          description: A paginated list of notes sorted by createdAt
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Note'
+                  links:
+                    $ref: '#/components/schemas/ListLinks'
+              examples:
+                success:
+                  summary: List of notes
+                  value:
+                    data:
+                      - id: 123e4567-e89b-12d3-a456-426614174000
+                        type: simple
+                        fields:
+                          name: Customer feedback
+                          tags:
+                            - name: feedback
+                            - name: q1
+                          content: Customer reported slow loading times on mobile app
+                          source:
+                            id: src123
+                            origin: support
+                            url: https://support.example.com/ticket/123
+                          owner:
+                            id: 923e4567-e89b-12d3-a456-426614174008
+                            email: john.doe@example.com
+                          creator:
+                            id: e23e4567-e89b-12d3-a456-426614174013
+                            email: creator@example.com
+                          processed: true
+                          archived: false
+                          createdAt: '2023-10-01T09:00:00Z'
+                          updatedAt: '2023-10-02T14:00:00Z'
+                        relationships:
+                          - type: customer
+                            target:
+                              id: f23e4567-e89b-12d3-a456-426614174014
+                              type: user
+                              links:
+                                self: https://api.productboard.com/v2/users/f23e4567-e89b-12d3-a456-426614174014
+                          - type: link
+                            target:
+                              id: g23e4567-e89b-12d3-a456-426614174015
+                              type: feature
+                              links:
+                                self: https://api.productboard.com/v2/entities/g23e4567-e89b-12d3-a456-426614174015
+                        links:
+                          self: https://api.productboard.com/v2/notes/123e4567-e89b-12d3-a456-426614174000
+                      - id: 223e4567-e89b-12d3-a456-426614174001
+                        type: conversation
+                        fields:
+                          name: Support conversation
+                          content:
+                            - externalId: b23e4567-e89b-12d3-a456-426614174010
+                              content: Hello, I need help with the app
+                              authorName: John Customer
+                              authorType: customer
+                              timestamp: '2023-10-01T10:00:00Z'
+                            - externalId: c23e4567-e89b-12d3-a456-426614174011
+                              content: Hi John, how can I help you today?
+                              authorName: Support Agent
+                              authorType: agent
+                              timestamp: '2023-10-01T10:05:00Z'
+                          tags:
+                            - name: support
+                          owner:
+                            id: d23e4567-e89b-12d3-a456-426614174012
+                            email: support@example.com
+                          creator:
+                            id: e23e4567-e89b-12d3-a456-426614174013
+                            email: creator@example.com
+                          processed: true
+                          archived: false
+                          createdAt: '2023-10-01T10:00:00Z'
+                          updatedAt: '2023-10-01T10:05:00Z'
+                        relationships:
+                          - type: customer
+                            target:
+                              id: h23e4567-e89b-12d3-a456-426614174016
+                              type: company
+                              links:
+                                self: https://api.productboard.com/v2/companies/h23e4567-e89b-12d3-a456-426614174016
+                        links:
+                          self: https://api.productboard.com/v2/notes/223e4567-e89b-12d3-a456-426614174001
+                    links:
+                      next: https://api.productboard.com/v2/notes?pageCursor=next_cursor_value
+                filterByOwnerEmail:
+                  summary: List unarchived notes owned by a specific user (filter by owner email)
+                  description: 'Example using query parameters: `?archived=false&owner[email]=john.doe@example.com`'
+                  value:
+                    data:
+                      - id: 123e4567-e89b-12d3-a456-426614174000
+                        type: simple
+                        fields:
+                          name: Customer feedback
+                          content: Customer reported slow loading times on mobile app
+                          owner:
+                            id: 923e4567-e89b-12d3-a456-426614174008
+                            email: john.doe@example.com
+                          creator:
+                            id: e23e4567-e89b-12d3-a456-426614174013
+                            email: creator@example.com
+                          processed: false
+                          archived: false
+                        links:
+                          self: https://api.productboard.com/v2/notes/123e4567-e89b-12d3-a456-426614174000
+                    links:
+                      next: null
+                filterBySourceRecordId:
+                  summary: List notes filtered by external source record ID
+                  description: 'Example using query parameter: `?source[recordId]=ticket-12345`'
+                  value:
+                    data:
+                      - id: 123e4567-e89b-12d3-a456-426614174000
+                        type: simple
+                        fields:
+                          name: Support ticket feedback
+                          content: Issue description from ticket system
+                          source:
+                            id: src123
+                            origin: support
+                            recordId: ticket-12345
+                            url: https://support.example.com/ticket/12345
+                          processed: false
+                          archived: false
+                        links:
+                          self: https://api.productboard.com/v2/notes/123e4567-e89b-12d3-a456-426614174000
+                    links:
+                      next: null
+                filterByDateRange:
+                  summary: List notes created within a specific date range
+                  description: 'Example using query parameters: `?createdFrom=2023-10-01T00:00:00Z&createdTo=2023-12-31T23:59:59Z`'
+                  value:
+                    data:
+                      - id: 123e4567-e89b-12d3-a456-426614174000
+                        type: simple
+                        fields:
+                          name: Q4 feedback
+                          content: Feedback collected during Q4
+                          processed: false
+                          archived: false
+                        links:
+                          self: https://api.productboard.com/v2/notes/123e4567-e89b-12d3-a456-426614174000
+                      - id: 223e4567-e89b-12d3-a456-426614174001
+                        type: simple
+                        fields:
+                          name: Another Q4 note
+                          content: More Q4 feedback
+                          processed: true
+                          archived: false
+                        links:
+                          self: https://api.productboard.com/v2/notes/223e4567-e89b-12d3-a456-426614174001
+                    links:
+                      next: null
+                filterByUpdateTime:
+                  summary: List notes updated after a specific time (for incremental sync)
+                  description: 'Example using query parameter: `?updatedFrom=2024-01-01T00:00:00Z`'
+                  value:
+                    data:
+                      - id: 123e4567-e89b-12d3-a456-426614174000
+                        type: simple
+                        fields:
+                          name: Recently updated note
+                          content: This note was recently modified
+                          processed: false
+                          archived: false
+                        links:
+                          self: https://api.productboard.com/v2/notes/123e4567-e89b-12d3-a456-426614174000
+                    links:
+                      next: null
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '408':
+          $ref: '#/components/responses/RequestTimeoutResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerErrorResponse'
+  /notes/{id}:
+    get:
+      summary: Retrieve note
+      description: |
+        Retrieves the full details of a specific note by its ID.
+
+        By default, the response includes all non-null fields available in your workspace for that note type
+        (e.g. `simple`, `conversation`). You can optimize the response size by using the `fields` query parameter:
+        - Use `fields=name,tags,content` to retrieve only specific fields
+        - Use `fields=all` to include all fields, even those with null values
+
+        You can use this endpoint to display the entire note content, including metadata such as owner, tags, and relationships.
+
+        > Use the [`/v2/notes/configurations`](#/paths/~1v2~1notes~1configurations/get) endpoint
+        to discover which fields are available for your workspace.
+      operationId: getNoteById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID of the note
+          schema:
+            type: string
+            format: uuid
+            example: 123e4567-e89b-12d3-a456-426614174000
+        - $ref: '#/components/parameters/fields'
+      responses:
+        '200':
+          description: A single note
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Note'
+              examples:
+                simple:
+                  summary: Simple note response
+                  value:
+                    data:
+                      id: 123e4567-e89b-12d3-a456-426614174000
+                      type: simple
+                      createdAt: '2023-10-01T10:00:00Z'
+                      updatedAt: '2023-10-15T14:30:00Z'
+                      fields:
+                        name: My note
+                        tags:
+                          - name: sales
+                          - name: q1
+                        content: This is a sample note content.
+                        source:
+                          id: src123
+                          origin: crm
+                          url: https://example.com
+                        owner:
+                          id: e23e4567-e89b-12d3-a456-426614174013
+                          email: owner@example.com
+                        creator:
+                          id: e23e4567-e89b-12d3-a456-426614174013
+                          email: creator@example.com
+                        processed: true
+                        archived: false
+                      relationships:
+                        - type: customer
+                          target:
+                            id: 923e4567-e89b-12d3-a456-426614174008
+                            type: user
+                            links:
+                              self: https://api.productboard.com/v2/users/923e4567-e89b-12d3-a456-426614174008
+                        - type: link
+                          target:
+                            id: a23e4567-e89b-12d3-a456-426614174009
+                            type: feature
+                            links:
+                              self: https://api.productboard.com/v2/entities/a23e4567-e89b-12d3-a456-426614174009
+                      links:
+                        self: https://api.productboard.com/v2/notes/123e4567-e89b-12d3-a456-426614174000
+                conversation:
+                  summary: Conversation note response
+                  value:
+                    data:
+                      id: 223e4567-e89b-12d3-a456-426614174001
+                      type: conversation
+                      fields:
+                        name: Conversation Note
+                        content:
+                          - externalId: 323e4567-e89b-12d3-a456-426614174002
+                            content: hello
+                            authorName: ''
+                            authorType: agent
+                            timestamp: '2023-10-01T11:00:00Z'
+                          - externalId: 423e4567-e89b-12d3-a456-426614174003
+                            content: world
+                            authorName: John Doe
+                            authorType: customer
+                            timestamp: '2023-10-01T12:00:00Z'
+                        tags:
+                          - name: support
+                        owner:
+                          id: f23e4567-e89b-12d3-a456-426614174014
+                          email: owner2@example.com
+                        creator:
+                          id: e23e4567-e89b-12d3-a456-426614174013
+                          email: creator@example.com
+                        processed: false
+                        archived: false
+                        createdAt: '2023-10-01T10:00:00Z'
+                        updatedAt: '2023-10-01T12:00:00Z'
+                      relationships:
+                        - type: customer
+                          target:
+                            id: b23e4567-e89b-12d3-a456-426614174010
+                            type: company
+                            links:
+                              self: https://api.productboard.com/v2/companies/b23e4567-e89b-12d3-a456-426614174010
+                      links:
+                        self: https://api.productboard.com/v2/notes/223e4567-e89b-12d3-a456-426614174001
+                opportunity:
+                  summary: Opportunity note response
+                  value:
+                    data:
+                      id: 323e4567-e89b-12d3-a456-426614174002
+                      type: opportunity
+                      fields:
+                        name: Opportunity Note
+                        tags:
+                          - name: sales
+                        content:
+                          - id: 523e4567-e89b-12d3-a456-426614174004
+                            name: Amount
+                            value: '1000.1235'
+                            fieldType: number
+                          - id: 623e4567-e89b-12d3-a456-426614174005
+                            name: Description
+                            value: Test Opportunity
+                            fieldType: string
+                          - id: 723e4567-e89b-12d3-a456-426614174006
+                            name: Close Date
+                            value: '2023-12-31'
+                            fieldType: string
+                        owner:
+                          id: 123e4567-e89b-12d3-a456-426614174015
+                          email: sales.rep@example.com
+                        creator:
+                          id: e23e4567-e89b-12d3-a456-426614174013
+                          email: creator@example.com
+                        processed: true
+                        archived: false
+                        createdAt: '2023-09-15T08:00:00Z'
+                        updatedAt: '2023-12-01T16:45:00Z'
+                      relationships:
+                        - type: link
+                          target:
+                            id: c23e4567-e89b-12d3-a456-426614174011
+                            type: initiative
+                            links:
+                              self: https://api.productboard.com/v2/entities/c23e4567-e89b-12d3-a456-426614174011
+                      links:
+                        self: https://api.productboard.com/v2/notes/323e4567-e89b-12d3-a456-426614174002
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '408':
+          $ref: '#/components/responses/RequestTimeoutResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerErrorResponse'
+    patch:
+      summary: Update note
+      description: |
+        Updates the values of one or more fields for an existing note.
+
+        You can update fields using either:
+        - **Field Updates**: Replace entire field values using the `fields` object
+        - **Patch Operations**: Perform granular updates using the `patch` array with operations (`set`, `clear`, `addItems`, `removeItems`)
+
+        Use this endpoint to update note metadata such as name, owner, tags, or content.
+        Use the [`/v2/notes/configurations`](#/paths/~1v2~1notes~1configurations/get) endpoint to discover available fields and possible patch operations.
+
+        ### Patch Operations
+
+        The following patch operations are supported:
+
+        | Operation | Description | Supported Fields |
+        |-----------|-------------|------------------|
+        | `set` | Set a field to a specific value | All fields |
+        | `clear` | Clear/reset a field to its default value | `owner`, `tags` |
+        | `addItems` | Add items to array fields | `tags`, `content` (conversation) |
+        | `removeItems` | Remove items from array fields | `tags`, `content` (conversation) |
+
+        **Field-specific patch operation support:**
+        - **owner**: `set`, `clear`
+        - **tags**: `set`, `clear`, `addItems`, `removeItems`
+        - **archived**: `set`
+        - **processed**: `set`
+        - **name**: `set`
+        - **content** (simple): `set`
+        - **content** (conversation): `set`, `addItems`, `removeItems`
+
+        ### Known Limitations
+
+        **Content updates for notes with linked features**: Notes that have content linked to features (via highlights/snippets) cannot have their `content` field updated. Attempting to update the content will return a `422 Unprocessable Entity` error with code `validation.forbidden`. You can still update other fields such as `name`, `owner`, `tags`, `archived`, and `processed` on these notes.
+
+        **Archive and Processed Field Behavior**: When you set `archived` to `false`, the note will be set to processed automatically by the system. This is a known limitation where unarchiving a note triggers processing regardless of the previous processed state. The `processed` field will reflect the actual processing status after the unarchive operation.
+      operationId: updateNote
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID of the note
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  type: object
+                  properties:
+                    fields:
+                      $ref: '#/components/schemas/NoteCreateOrUpdateFields'
+                    patch:
+                      $ref: '#/components/schemas/NotePatch'
+              examples:
+                - summary: Update note fields
+                  value:
+                    data:
+                      fields:
+                        name: New name
+                        tags:
+                          - sales
+                          - onboarding
+                        content: <p>Updated content of the note</p>
+                - summary: Set owner using patch operation
+                  value:
+                    data:
+                      patch:
+                        - op: set
+                          path: owner
+                          value:
+                            email: john.doe@example.com
+                - summary: Clear owner using patch operation
+                  value:
+                    data:
+                      patch:
+                        - op: clear
+                          path: owner
+                - summary: Add conversation parts using patch operation
+                  value:
+                    data:
+                      patch:
+                        - op: addItems
+                          path: content
+                          value:
+                            - authorType: customer
+                              authorName: John
+                              content: Hi, I have a question
+                              timestamp: '2025-07-01T09:00:00Z'
+                        - op: removeItems
+                          path: content
+                          value:
+                            - 123e4567-e89b-12d3-a456-426614174000
+                - summary: Set tags using patch operation
+                  value:
+                    data:
+                      patch:
+                        - op: set
+                          path: tags
+                          value:
+                            - name: support
+                            - name: urgent
+                - summary: Add tags using patch operation
+                  value:
+                    data:
+                      patch:
+                        - op: addItems
+                          path: tags
+                          value:
+                            - name: new-tag
+                - summary: Remove tags using patch operation
+                  value:
+                    data:
+                      patch:
+                        - op: removeItems
+                          path: tags
+                          value:
+                            - name: old-tag
+                - summary: Clear tags using patch operation
+                  value:
+                    data:
+                      patch:
+                        - op: clear
+                          path: tags
+                - summary: Set archived status using patch operation
+                  value:
+                    data:
+                      patch:
+                        - op: set
+                          path: archived
+                          value: true
+                - summary: Set processed status using patch operation
+                  value:
+                    data:
+                      patch:
+                        - op: set
+                          path: processed
+                          value: true
+      responses:
+        '200':
+          description: Successfully updated, returns reference to entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteReferenceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '408':
+          $ref: '#/components/responses/RequestTimeoutResponse'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerErrorResponse'
+    delete:
+      summary: Delete note
+      description: |
+        Permanently deletes a note from your workspace. This action is irreversible and should be used with caution.
+
+        Once deleted, the note and all of its content, metadata, and relationships
+        will be removed and cannot be recovered.
+
+        > To perform a soft-delete (archiving), use an update call instead to set the `archived` flag.
+      operationId: deleteNoteById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID of the note to delete
+          schema:
+            type: string
+            format: uuid
+            example: 123e4567-e89b-12d3-a456-426614174000
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '408':
+          $ref: '#/components/responses/RequestTimeoutResponse'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerErrorResponse'
+  /notes/{id}/relationships:
+    get:
+      summary: Retrieve relationships
+      operationId: getNoteRelationships
+      description: |
+        Retrieves all relationships connected to a specific note.
+
+        This includes:
+        - Customer relationship (either a User or Company entity)
+        - Product link relationships (e.g. linked features)
+
+        ### Customer relationship rules
+        - A note can have a relationship to **exactly one customer entity** (User or Company).
+        - If the note has a **User** as the customer, and that User is associated with a Company,
+          only the **User** is returned.
+        - If the note has a **User** without a Company, the User is returned.
+        - If the note has a **Company**, the Company is returned.
+        - If the note has no customer relationship, an empty array is returned.
+
+        ### Product link relationships
+        - Notes can be linked to **multiple Product Management entities** (e.g. features, components).
+        - All such relationships are returned in the same response.
+
+        > To discover supported relationship types, use the [`/v2/notes/configurations`](#/paths/~1v2~1notes~1configurations/get) endpoint.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID of the note
+          schema:
+            type: string
+            format: uuid
+        - name: pageCursor
+          in: query
+          description: Cursor for pagination through relationships
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of relationships to return per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Relationships retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NoteRelationship'
+                  links:
+                    type: object
+                    properties:
+                      next:
+                        type:
+                          - string
+                          - 'null'
+                        description: |
+                          URL to the next page of relationships. Null when all relationships are returned.
+              examples:
+                example:
+                  summary: Example relationships response
+                  value:
+                    data:
+                      - type: customer
+                        target:
+                          id: 123e4567-e89b-12d3-a456-426614174000
+                          type: user
+                          links:
+                            self: https://api.productboard.com/v2/users/123e4567-e89b-12d3-a456-426614174000
+                      - type: link
+                        target:
+                          id: 223e4567-e89b-12d3-a456-426614174001
+                          type: feature
+                          links:
+                            self: https://api.productboard.com/v2/entities/223e4567-e89b-12d3-a456-426614174001
+                    links:
+                      next: null
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '408':
+          $ref: '#/components/responses/RequestTimeoutResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerErrorResponse'
+    post:
+      summary: Create relationship
+      description: |
+        Creates a new relationship between a note and another entity.
+
+        You can link a note to:
+        - A Product Management entity (e.g. feature, component, initiative)
+        - A customer entity (company or user)
+
+        This is useful for capturing customer feedback and tying it to the right product link,
+        or for attributing a note to a specific customer.
+
+        > If a Customer relationship already exists (user or company), it will be replaced.
+        Notes can have **one customer** relationship and **multiple product link** relationships.
+      operationId: setNoteRelationship
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID of the note
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: object
+                  required:
+                    - type
+                    - target
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - customer
+                        - link
+                      example: customer
+                    target:
+                      $ref: '#/components/schemas/EntityRelationshipPayloadTarget'
+            examples:
+              customer_relationship:
+                summary: Create customer relationship
+                value:
+                  data:
+                    type: customer
+                    target:
+                      id: 123e4567-e89b-12d3-a456-426614174000
+                      type: user
+              link_relationship:
+                summary: Create Product link relationship
+                value:
+                  data:
+                    type: link
+                    target:
+                      id: 223e4567-e89b-12d3-a456-426614174001
+                      type: link
+      responses:
+        '201':
+          description: Relationship set
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        example: customer
+                      target:
+                        $ref: '#/components/schemas/EntityReferenceResponse'
+              examples:
+                customer_relationship_created:
+                  summary: Customer relationship created
+                  value:
+                    data:
+                      type: customer
+                      target:
+                        id: 123e4567-e89b-12d3-a456-426614174000
+                        type: user
+                        links:
+                          self: https://api.productboard.com/v2/users/123e4567-e89b-12d3-a456-426614174000
+                link_relationship_created:
+                  summary: Product link relationship created
+                  value:
+                    data:
+                      type: link
+                      target:
+                        id: 223e4567-e89b-12d3-a456-426614174001
+                        type: feature
+                        links:
+                          self: https://api.productboard.com/v2/entities/223e4567-e89b-12d3-a456-426614174001
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '408':
+          $ref: '#/components/responses/RequestTimeoutResponse'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerErrorResponse'
+  /notes/{id}/relationships/customer:
+    put:
+      summary: Set customer relationship
+      description: |
+        Sets or replaces the customer relationship of a note.
+
+        * A note can be linked to **one customer only** — either a User or a Company.
+        * If a customer relationship already exists, it will be **replaced** with the new one provided.
+
+        This is useful for attributing feedback to the correct user or company, especially when syncing notes from support systems or CRMs.
+
+        > To remove the customer relationship completely, use the `DELETE /v2/notes/{id}/relationships/customer/{targetId}` endpoint.
+      operationId: patchNoteCustomerRelationship
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID of the note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  type: object
+                  required:
+                    - target
+                  properties:
+                    target:
+                      $ref: '#/components/schemas/EntityRelationshipPayloadCustomerTarget'
+            examples:
+              link_user:
+                summary: Link a user to a note
+                value:
+                  data:
+                    target:
+                      type: user
+                      id: 123e4567-e89b-12d3-a456-426614174000
+              link_company:
+                summary: Link a company to a note
+                value:
+                  data:
+                    target:
+                      type: company
+                      id: 223e4567-e89b-12d3-a456-426614174001
+      responses:
+        '200':
+          description: Customer relationship replaced
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        example: customer
+                      target:
+                        $ref: '#/components/schemas/EntityReferenceResponse'
+              examples:
+                customer_relationship_replaced:
+                  summary: Customer relationship replaced
+                  value:
+                    data:
+                      type: customer
+                      target:
+                        id: 123e4567-e89b-12d3-a456-426614174000
+                        type: user
+                        links:
+                          self: https://api.productboard.com/v2/users/123e4567-e89b-12d3-a456-426614174000
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '408':
+          $ref: '#/components/responses/RequestTimeoutResponse'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerErrorResponse'
+  /notes/{id}/relationships/{targetType}/{targetId}:
+    delete:
+      summary: Delete note relationship
+      operationId: deleteNoteRelationship
+      description: |
+        Deletes a relationship between a note and a target entity (customer or link).
+
+        This is used to unlink a note from:
+        * **customer**: A user or company associated with the note
+        * **link**: A specific feature, component, or other product
+
+        For customer relationships, the targetId should be the UUID of the customer or organization.
+        For link relationships, the targetId should be the UUID of the feature, component or product entity.
+
+        > **Note**: For customer relationships, the targetId parameter can be any UUID as it is ignored during deletion.
+        The endpoint will remove all customer relationships from the note regardless of the targetId value provided.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: 123e4567-e89b-12d3-a456-426614174000
+          description: UUID of the note
+        - name: targetType
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - customer
+              - link
+            example: link
+          description: |
+            Relationship type to delete.
+            * `customer`: Delete customer relationship (user or company)
+            * `link`: Delete link relationship (feature, component or product entity)
+        - name: targetId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: 223e4567-e89b-12d3-a456-426614174001
+          description: UUID of the target entity (customer, organization, or link). For customer relationships, this is optional for backward compatibility.
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContentResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '408':
+          $ref: '#/components/responses/RequestTimeoutResponse'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerErrorResponse'
+components:
+  parameters:
+    fields:
+      name: fields
+      in: query
+      description: |
+        Selectively retrieve specific fields from the response to optimize bandwidth and response size.
+
+        - **No parameter** (default) - Returns all non-null fields, excluding empty values
+        - **`fields=all`** - Returns all available fields, including those with null/empty values
+        - **`fields=name,tags,content`** - Returns only the specified comma-separated fields
+
+        **For Notes endpoints:**
+        - When specific fields are requested, they are returned even if they have null/empty values
+        - Unknown field IDs result in a 400 Bad Request error
+        - Combining `all` with specific field IDs results in a 400 Bad Request error
+      required: false
+      schema:
+        type: string
+      examples:
+        sparse:
+          summary: Retrieve only specific fields
+          value: name,tags,content
+        all:
+          summary: Include all fields including null values
+          value: all
+  schemas:
+    NoteReference:
+      type: object
+      description: |
+        Minimal reference to a note resource containing only identifying information.
+      required:
+        - id
+        - type
+        - links
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+            - simple
+            - conversation
+            - opportunity
+          example: simple
+        links:
+          $ref: '#/components/schemas/ResourceLinks'
+    NoteReferenceResponse:
+      type: object
+      description: |
+        Response wrapper containing a note reference.
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/NoteReference'
+    Note:
+      description: |
+        Full note resource with all fields and metadata.
+      allOf:
+        - $ref: '#/components/schemas/NoteReference'
+        - type: object
+          required:
+            - fields
+            - relationships
+            - createdAt
+            - updatedAt
+          properties:
+            fields:
+              $ref: '#/components/schemas/NoteFields'
+            relationships:
+              $ref: '#/components/schemas/NoteRelationships'
+            createdAt:
+              type: string
+              format: date-time
+              description: ISO 8601 timestamp when the note was created
+              example: '2025-01-15T10:30:00Z'
+            updatedAt:
+              type: string
+              format: date-time
+              description: ISO 8601 timestamp when the note was last updated
+              example: '2025-01-15T14:45:00Z'
+    EntityRelationshipPayloadTarget:
+      type: object
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+            - user
+            - company
+            - link
+          example: user
+    EntityRelationshipPayloadCustomerTarget:
+      type: object
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+            - user
+            - company
+          example: user
+    EntityReferenceResponse:
+      type: object
+      description: |
+        Represents a reference to an entity in Productboard.
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        type:
+          $ref: '#/components/schemas/EntityType'
+        links:
+          $ref: '#/components/schemas/ResourceLinks'
+    EntityType:
+      type: string
+      description: |
+        - Initially comes from PMM, where this value is called "model".
+        - We are exposing it under more understandable "type".
+        - Plural form is kept for consistency.
+
+        # Validation
+
+        # Filtering
+      example: feature
+    ResourceLinks:
+      type: object
+      required:
+        - self
+      properties:
+        self:
+          type: string
+    ListLinks:
+      type: object
+      required:
+        - next
+      properties:
+        next:
+          type:
+            - string
+            - 'null'
+    ErrorResponse:
+      type: object
+      description: |
+        Standard error response structure for all endpoints.
+      required:
+        - id
+        - errors
+      properties:
+        id:
+          type: string
+          description: |
+            A unique identifier for this specific occurrence of the problem.
+            It carries unique request/response ID which allows client
+            and server to reference the exact instance of the error
+            in logs or support communication.
+        errors:
+          type: array
+          description: Array of error objects, multiple errors can be returned.
+          items:
+            $ref: '#/components/schemas/Error'
+          minItems: 1
+    Error:
+      type: object
+      description: |
+        Individual error object containing the details and context.
+      required:
+        - code
+        - title
+        - detail
+      properties:
+        code:
+          type: string
+          description: |
+            A unique, machine-readable and stable code that identifies this error.
+            Must be consistent across all services and provide clear categorization.
+            Format: `category.subcategory.specificError`
+          examples:
+            - access.denied
+            - entity.not.found
+        title:
+          type: string
+          description: |
+            A short, human-readable summary of the problem that doesn't change
+            from occurrence to occurrence of the problem. Should provide immediate
+            understanding of the error type.
+          maxLength: 255
+          example: Missing required field
+        detail:
+          type: string
+          description: |
+            A human-readable explanation specific to this occurrence of the problem.
+            May include suggestions for resolution but should not expose sensitive information.
+          maxLength: 1000
+          example: Field 'status' is required.
+        source:
+          $ref: '#/components/schemas/ErrorSource'
+    ErrorSource:
+      type: object
+      description: |
+        An object containing references to the source of the error. I helps with location of the problematic field or parameter.
+      properties:
+        pointer:
+          type: string
+          description: |
+            JSON Pointer [RFC6901] to the associated entity in the request document.
+          example: /data/fields/status
+        parameter:
+          type: string
+          description: |
+            Query parameter causing the error.
+            Used when the error is related to a query parameter rather than request body.
+          example: pageCursor
+    UUID:
+      type: string
+      format: uuid
+      description: |
+        A universally unique identifier (UUID).
+    UUIDFieldValue:
+      type: string
+      format: uuid
+      description: |
+        A universally unique identifier (UUID).
+
+        # Validation
+        Validate if provided value is an UUID.
+
+        # Filtering
+        N/A
+    TextFieldValue:
+      type: string
+      minLength: 0
+      maxLength: 255
+      description: |
+        A string field that can contain any text.
+        The exact format should be specified in the API documentation.
+
+        # Validation
+
+        # Filtering
+        We support only exact match. No wildcards or startWith/endWith.
+      example: Example String
+    NumberFieldValue:
+      type: number
+      description: |
+        A numeric field that can contain any number.
+        The exact format should be specified in the API documentation.
+
+        # Validation
+        Validate if provided value is a number.
+        We support integers or flows and negative numbers.
+
+        # Filtering
+        We support only exact match.
+      example: 123.45
+    RichTextFieldValue:
+      type: string
+      format: html
+      minLength: 0
+      maxLength: 524288
+      description: |
+        Rich text content, which may include HTML or Markdown formatting.
+        The exact format should be specified in the API documentation.
+
+        # Validation
+
+        # Filtering
+        No filtering
+      example: <p>This is <strong>rich</strong> text.</p>
+    DateFieldValue:
+      type: string
+      format: date
+      description: |
+        Date and time in ISO 8601 format without time.
+
+        # Validation
+        Validate if provided value is a date string.
+
+        # Filtering
+        We support only exact match.
+      example: '2023-10-01'
+    DateTimeFieldValue:
+      type: string
+      format: date-time
+      description: |
+        Date and time in ISO 8601 format (e.g., "2023-10-01T12:00:00Z").
+        The exact format should be specified in the API documentation.
+
+        # Validation
+        Validate if provided value is a date-time string.
+
+        # Filtering
+        We support only exact match.
+      example: '2023-10-01T12:00:00Z'
+    URLFieldValue:
+      type: string
+      format: uri
+      description: |
+        A URL field that can contain any valid URL.
+        The exact format should be specified in the API documentation.
+
+        # Validation
+        Validate if provided value is a URL.
+
+        # Filtering
+        We support only exact match.
+      example: https://example.com
+    NameFieldValue:
+      type: string
+      minLength: 0
+      maxLength: 255
+      description: |
+        A name field that can contain any text.
+        The exact format should be specified in the API documentation.
+
+        # Validation
+
+        # Filtering
+        We support only exact match.
+      example: Example Name
+    BooleanFieldValue:
+      type: boolean
+      description: |
+        Boolean value or flag. In the UI, it is usually represented as a single checkbox.
+        # Validation
+        Validate if value is `true` or `false`
+        # Filtering
+        We support filtering by value
+      example: true
+    MultiSelectFieldValue:
+      type: array
+      items:
+        $ref: '#/components/schemas/SingleSelectFieldValue'
+      example:
+        - id: 95db5914-36b0-45e9-8f6d-7f11a950ac1d
+          name: Example Option
+    SingleSelectFieldValue:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+      example:
+        id: 95db5914-36b0-45e9-8f6d-7f11a950ac1d
+        name: Example Option
+    MultiSelectFieldAssign:
+      type: array
+      items:
+        oneOf:
+          - $ref: '#/components/schemas/SingleSelectFieldAssignById'
+          - $ref: '#/components/schemas/SingleSelectFieldAssignByName'
+    MemberFieldAssign:
+      description: |
+
+        # Validation
+
+        # Filtering
+      oneOf:
+        - $ref: '#/components/schemas/MemberAssignById'
+        - $ref: '#/components/schemas/MemberAssignByEmail'
+    MemberAssignById:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+    MemberAssignByEmail:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: john@doe.com
+    SingleSelectFieldAssignById:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+    SingleSelectFieldAssignByName:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Example Option
+    ConversationNotePart:
+      type: object
+      required:
+        - externalId
+        - authorType
+        - content
+        - timestamp
+      properties:
+        externalId:
+          type: string
+          description: |
+            Unique reference of a part in the external system
+        authorName:
+          type: string
+          description: |
+            Name of the author of the conversation part, it isn't connected
+            to any member in the system
+        authorType:
+          type: string
+          description: |
+            Type of the author of the conversation part, it can be either
+            `customer` or `agent`
+          enum:
+            - customer
+            - agent
+        content:
+          type: string
+          description: |
+            Content of the conversation part
+        timestamp:
+          type: string
+          description: |
+            When particular conversation part was created. We sort conversation
+            parts in the UI by this value
+          format: date-time
+    SourceFieldValue:
+      type: object
+      description: Source information for the note content
+      properties:
+        id:
+          type:
+            - string
+            - 'null'
+          description: Identifier of the source in an external system
+        origin:
+          type:
+            - string
+            - 'null'
+          description: Origin system name, e.g., crm, support, etc.
+        recordId:
+          type:
+            - string
+            - 'null'
+          description: External source record ID for filtering and cross-referencing
+        url:
+          type:
+            - string
+            - 'null'
+          description: URL pointing to the source record
+    MemberFieldValue:
+      type: object
+      description: |
+
+        # Validation
+
+        # Filtering
+      required:
+        - id
+        - email
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        email:
+          type: string
+          format: email
+          example: john@doe.com
+    NoteRelationship:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - customer
+            - link
+        target:
+          $ref: '#/components/schemas/EntityReferenceResponse'
+    NoteRelationships:
+      type: object
+      description: |
+        A collection of relationships connected to the note.
+        This includes:
+        - Customer relationship (either a User or Company entity)
+        - Product link relationships (e.g. linked features)
+        The list is paginated, to see the rest of the relationships follow the URL contained in the `links.next` attribute.
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteRelationship'
+        links:
+          $ref: '#/components/schemas/ListLinks'
+    NoteCreateRelationship:
+      type: object
+      description: |
+        Relationship to create when creating a note.
+        Used for atomically creating notes with relationships in a single API call.
+      properties:
+        type:
+          type: string
+          enum:
+            - customer
+            - link
+          description: |
+            Type of relationship:
+            - `customer`: Link to a User or Company
+            - `link`: Link to a product link
+          example: customer
+        target:
+          type: object
+          required:
+            - id
+            - type
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: UUID of the entity to link to
+              example: 123e4567-e89b-12d3-a456-426614174000
+            type:
+              type: string
+              enum:
+                - user
+                - company
+                - link
+              description: |
+                Entity type:
+                - `user`: Link to a user (customer)
+                - `company`: Link to a company (customer)
+                - `link`: Link to a product link (feature, product, or component)
+              example: user
+    NoteFields:
+      type: object
+      additionalProperties:
+        anyOf:
+          - $ref: '#/components/schemas/NoteFieldValue'
+          - type: 'null'
+    NoteFieldValue:
+      description: |
+        A list of possible value types of Note fields
+      anyOf:
+        - $ref: '#/components/schemas/BooleanFieldValue'
+        - $ref: '#/components/schemas/ConversationNoteFieldValue'
+        - $ref: '#/components/schemas/DateFieldValue'
+        - $ref: '#/components/schemas/KeyValueFieldValue'
+        - $ref: '#/components/schemas/MemberFieldValue'
+        - $ref: '#/components/schemas/MultiSelectFieldValue'
+        - $ref: '#/components/schemas/NameFieldValue'
+        - $ref: '#/components/schemas/NumberFieldValue'
+        - $ref: '#/components/schemas/RichTextFieldValue'
+        - $ref: '#/components/schemas/SourceFieldValue'
+        - $ref: '#/components/schemas/TextFieldValue'
+        - $ref: '#/components/schemas/URLFieldValue'
+        - $ref: '#/components/schemas/UUIDFieldValue'
+    KeyValueFieldValue:
+      type: array
+      description: |
+        An array of opportunity fields. Each field represents a specific piece of information related to the opportunity.
+        This is used to store additional information about the opportunity.
+      items:
+        $ref: '#/components/schemas/KeyValueFieldValueItem'
+    KeyValueFieldValueItem:
+      type: object
+      description: |
+        Represents a field in key-value note.
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier of the opportunity field.
+        name:
+          type: string
+          description: Name of the opportunity field.
+        fieldType:
+          type: string
+          description: Type of the opportunity field, can be one of the defined field types.
+          enum:
+            - number
+            - string
+        value:
+          type: string
+          description: Value of the opportunity field
+    NoteCreateOrUpdateFields:
+      type: object
+      description: |
+        A collection of fields that can be used to create or update a Note.
+        It is a subset of `NoteFields` that is used for creation or update operations.
+      additionalProperties:
+        anyOf:
+          - $ref: '#/components/schemas/NoteCreateOrUpdateFieldValue'
+          - type: 'null'
+    NoteCreateOrUpdateFieldValue:
+      description: |
+        A list of create/update payloads for possible value types of a resource fields.
+      anyOf:
+        - $ref: '#/components/schemas/BooleanFieldValue'
+        - $ref: '#/components/schemas/ConversationNoteFieldValue'
+        - $ref: '#/components/schemas/DateFieldValue'
+        - $ref: '#/components/schemas/MemberFieldAssign'
+        - $ref: '#/components/schemas/MultiSelectFieldAssign'
+        - $ref: '#/components/schemas/NameFieldValue'
+        - $ref: '#/components/schemas/NumberFieldValue'
+        - $ref: '#/components/schemas/RichTextFieldValue'
+        - $ref: '#/components/schemas/SourceFieldValue'
+        - $ref: '#/components/schemas/TextFieldValue'
+        - $ref: '#/components/schemas/URLFieldValue'
+        - $ref: '#/components/schemas/UUIDFieldValue'
+    RelationshipsFieldValue:
+      type: array
+      description: |
+        Array of relationships to create with the note.
+        Used only for POST /v2/notes creation.
+      items:
+        $ref: '#/components/schemas/NoteCreateRelationship'
+    NotePatch:
+      type: array
+      description: |
+        A list of patch operations to perform on a Note field.
+        Each operation can be one of `set`, `clear`, `addItems`, or `removeItems`.
+
+        **Supported Operations:**
+        - `set`: Set a field to a specific value (supports all fields)
+        - `clear`: Clear/reset a field to its default value (supports owner, tags, content)
+        - `addItems`: Add items to array fields (supports tags, conversation content)
+        - `removeItems`: Remove items from array fields (supports tags, conversation content)
+
+        **Field-specific support:**
+        - **owner**: set, clear
+        - **tags**: set, clear, addItems, removeItems
+        - **archived**: set
+        - **processed**: set
+        - **name**: set
+        - **content** (simple): set
+        - **content** (conversation): set, addItems, removeItems
+
+        **Operation Compatibility Rules (for each field):**
+        - Cannot combine `set`/`clear` with `addItems`/`removeItems` operations on the same field
+        - Cannot combine both `set` and `clear` operations on the same field
+        - Can combine `addItems` and `removeItems` together on the same field (for array operations)
+      items:
+        oneOf:
+          - $ref: '#/components/schemas/NotePatchOperation'
+          - $ref: '#/components/schemas/NotePatchOperationClear'
+    NotePatchOperation:
+      type: object
+      description: |
+        This patch operation modifies a field value using set, addItems, or removeItems operations.
+
+        **Operation Types:**
+        - `set`: Replace the entire field value
+        - `addItems`: Add items to array fields (tags, conversation content)
+        - `removeItems`: Remove items from array fields (tags, conversation content)
+      required:
+        - op
+        - path
+        - value
+      additionalProperties: false
+      properties:
+        op:
+          type: string
+          description: |
+            The operation to perform on the field.
+            Can be one of `set`, `addItems`, `removeItems`.
+          enum:
+            - set
+            - addItems
+            - removeItems
+        path:
+          type: string
+          description: |
+            The path to the field to be modified.
+            Common field paths: "owner", "tags", "archived", "processed", "name", "content"
+        value:
+          anyOf:
+            - $ref: '#/components/schemas/NoteCreateOrUpdateFieldValue'
+            - $ref: '#/components/schemas/ConversationNotePartsAssign'
+    NotePatchOperationClear:
+      type: object
+      description: |
+        This patch operation clears/resets the value of a field to its default state.
+
+        **Supported Fields:**
+        - `owner`: Clears the owner (sets to null)
+        - `tags`: Clears all tags (sets to empty array)
+        - `content`: Clears content (for conversation/opportunity notes)
+      required:
+        - op
+        - path
+      additionalProperties: false
+      properties:
+        op:
+          type: string
+          description: |
+            The operation to perform on the field.
+            Must be `clear`.
+          enum:
+            - clear
+        path:
+          type: string
+          description: |
+            The path to the field to be cleared.
+            Common field paths: "owner", "tags", "content"
+    ConversationNoteFieldValue:
+      description: |
+        This type is intended to be used only for Conversation Notes. It’s
+        reflecting the conversation style of communication, like Zendesk
+        support tickets, where there are two sides in the conversation.
+        # Validation
+        Individual properties of individual Conversation Parts
+        needs to be validated.
+        # Filtering
+        We don't support any kind of filtering on this field.
+        # Implementation
+        Items in the array are ordered by the `timestamp` property.
+      type: array
+      items:
+        $ref: '#/components/schemas/ConversationNotePart'
+    ConversationNotePartsAssign:
+      type: array
+      description: |
+        Assign conversation parts to a conversation note.
+      items:
+        type: object
+        required:
+          - externalId
+        properties:
+          externalId:
+            type: string
+            description: |
+              Unique identifier of the conversation part. It is used to identify the part in the system.
+    Configuration:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/EntityType'
+        fields:
+          type: object
+          description: |
+            A key-value definition fields that are part of the entity.
+            Key represents field id (eg. name, description, or UUID)
+          additionalProperties:
+            $ref: '#/components/schemas/ConfigurationField'
+        relationships:
+          type: object
+          description: |
+            A key-value definition of possible relationships to other entities.
+            Key represents the relationship type to other entities (child, parent, link)
+          additionalProperties:
+            $ref: '#/components/schemas/ConfigurationRelationship'
+    ConfigurationRelationship:
+      type: object
+      required:
+        - targetType
+        - cardinality
+        - mandatory
+      properties:
+        targetType:
+          type: array
+          items:
+            $ref: '#/components/schemas/EntityType'
+        cardinality:
+          type: string
+          description: |
+            Whether the entity can have single or multiple relationships of a given type
+          enum:
+            - single
+            - multiple
+        mandatory:
+          type: boolean
+          description: |
+            Specifies whether the entity must have such relationship to a target entity (e.g. it must have parent).
+            If a relationship is mandatory and can have multiple entity types as targets, then there must exist *at least
+            one* relationship to an entity that is of any of the specified types.
+
+            For example, a feature must have a parent that is either a component, or a product.
+          default: false
+    ConfigurationFieldLifecycle:
+      type: object
+      description: |
+        Defines the available operations for a field during different lifecycle stages.
+        Possible lifecycle stages are `create`, `update` and `patch`.
+          - `create` defines what operations are allowed when creating an entity
+          - `update` defines what operations are allowed when using a simple patch via `data.fields`
+          - `patch` defines what operations are allowed when using a JSON Patch via `data.patch` array
+      additionalProperties:
+        $ref: '#/components/schemas/ConfigurationFieldLifecycleOperation'
+    ConfigurationFieldLifecycleOperation:
+      type: object
+      description: |
+        Defines the specific operations allowed during a lifecycle stage.
+      properties:
+        set:
+          type: boolean
+          description: |
+            Whether the field value can be set (assigned).
+          default: false
+        clear:
+          type: boolean
+          description: |
+            Whether the field value can be cleared (set to null/empty).
+          default: false
+        addItems:
+          type: boolean
+          description: |
+            Whether items can be added to the field (for list-type fields).
+          default: false
+        removeItems:
+          type: boolean
+          description: |
+            Whether items can be removed from the field (for list-type fields).
+          default: false
+    ConfigurationFieldConstraints:
+      type: object
+      description: |
+        Validation constraints and rules for the field.
+      properties:
+        maxLength:
+          type: integer
+          description: |
+            Maximum length for text fields.
+          minimum: 0
+          example: 255
+        maxSize:
+          type: integer
+          description: |
+            Maximum size in bytes for content fields.
+          minimum: 0
+          example: 1048576
+        maxItems:
+          type: integer
+          description: |
+            Maximum number of items for list-type fields.
+          minimum: 0
+          example: 20
+        allowEmpty:
+          type: boolean
+          description: |
+            Whether empty string values are allowed.
+          default: true
+        required:
+          type: boolean
+          description: |
+            Whether the field is required.
+          default: false
+        uniqueItems:
+          type: boolean
+          description: |
+            Whether items in list-type fields must be unique.
+          default: false
+        values:
+          $ref: '#/components/schemas/ConfigurationFieldConstraintsValues'
+    ConfigurationFieldConstraintsValues:
+      type: object
+      description: |
+        Defines constraints on allowed values for the field.
+      properties:
+        query:
+          $ref: '#/components/schemas/ConfigurationFieldConstraintsQuery'
+    ConfigurationFieldConstraintsQuery:
+      type: object
+      description: |
+        Query-based value constraints referencing external endpoints.
+      properties:
+        links:
+          type: object
+          properties:
+            list:
+              type: string
+              format: uri
+              description: |
+                URL endpoint that provides the list of allowed values.
+              example: /members?role=admin
+    ConfigurationFieldDefaultValue:
+      type: object
+      description: |
+        Default value configuration for the field.
+      oneOf:
+        - $ref: '#/components/schemas/ConfigurationFieldDefaultValueObject'
+        - $ref: '#/components/schemas/ConfigurationFieldDefaultValueSource'
+    ConfigurationFieldDefaultValueObject:
+      type: object
+      description: |
+        Explicit default value object.
+      properties:
+        value:
+          description: |
+            The default value for the field. Can be a simple value (boolean, string, number, etc.)
+            or an object with id and name properties (e.g., for select fields).
+          oneOf:
+            - type: boolean
+              example: false
+            - type: string
+              example: default text
+            - type: number
+              example: 0
+            - type: object
+              properties:
+                id:
+                  $ref: '#/components/schemas/UUID'
+                name:
+                  type: string
+                  example: New Idea
+    ConfigurationFieldDefaultValueSource:
+      type: object
+      description: |
+        Runtime-computed default value (e.g., authenticated user).
+      required:
+        - type
+        - source
+      properties:
+        type:
+          type: string
+          enum:
+            - runtime
+          example: runtime
+        source:
+          type: string
+          enum:
+            - authenticatedMember
+          example: authenticatedMember
+    FieldValues:
+      type: object
+      description: |
+        Configuration for field values, particularly for select-type fields.
+      properties:
+        inline:
+          $ref: '#/components/schemas/FieldInlineValues'
+    FieldInlineValues:
+      type: object
+      description: |
+        Inline value definitions for select-type fields.
+      properties:
+        data:
+          type: array
+          items:
+            oneOf:
+              - type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+              - type: string
+    ConfigurationField:
+      type: object
+      description: |
+        Field configuration with inline JSON schema and path for API operations.
+        This structure is used for all fields, including nested properties.
+      required:
+        - id
+        - name
+        - path
+        - schema
+      properties:
+        id:
+          type: string
+          description: |
+            The unique identifier of the field. For simple fields like "name",
+            for nested fields like "timeframe.startDate", for UUID custom fields.
+          pattern: ^([a-z][a-zA-Z]*(\.[a-z][a-zA-Z]*)?)|([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
+          example: name
+        name:
+          type: string
+          description: |
+            The display name of the field.
+          example: Name
+        path:
+          type: string
+          description: |
+            The path used for API operations. Uses "/fields/" prefix and nested paths for properties.
+          pattern: ^/fields/[a-z][a-zA-Z]*(/[a-z][a-zA-Z]*)?$|^/fields/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+          example: /fields/name
+        schema:
+          type: object
+          description: |
+            Inline JSON Schema that defines this field's structure.
+          example:
+            type: string
+            maxLength: 255
+        links:
+          $ref: '#/components/schemas/ResourceLinks'
+        lifecycle:
+          $ref: '#/components/schemas/ConfigurationFieldLifecycle'
+        constraints:
+          $ref: '#/components/schemas/ConfigurationFieldConstraints'
+        default:
+          $ref: '#/components/schemas/ConfigurationFieldDefaultValue'
+        values:
+          $ref: '#/components/schemas/FieldValues'
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: API token authentication. Use your API token as the value of the Authorization header
+    OAuth2:
+      type: oauth2
+      description: OAuth 2.0 authentication. Use this for user-authorized access to Productboard API.
+      flows:
+        authorizationCode:
+          authorizationUrl: https://app.productboard.com/oauth/authorize
+          tokenUrl: https://app.productboard.com/oauth/token
+          scopes:
+            notes:read: Read access to notes
+            notes:write: Write access to create and modify notes
+            notes:delete: Delete notes
+  responses:
+    NoContentResponse:
+      description: The request was successful and no content is returned.
+    BadRequestResponse:
+      description: Bad Request - Invalid input format or malformed request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            schemaInvalid:
+              summary: Request does not satisfy schema
+              value:
+                id: req-1234567890
+                errors:
+                  - code: request.invalid
+                    title: Request schema invalid
+                    detail: The request does not satisfy the required schema. Field 'type' is required but was not provided.
+                    source:
+                      pointer: /data/type
+            fieldInvalid:
+              summary: Invalid field value type
+              value:
+                id: req-1234567891
+                errors:
+                  - code: request.invalid
+                    title: Request schema invalid
+                    detail: Field 'fields/name' must be a string with maximum length of 255 characters, but received a number.
+                    source:
+                      pointer: /data/fields/name
+            malformedJson:
+              summary: Malformed JSON syntax
+              value:
+                id: req-1234567892
+                errors:
+                  - code: request.malformed
+                    title: Request malformed
+                    detail: The request body contains invalid JSON syntax. Expected ',' or '}' at line 5, column 12.
+            invalidContentType:
+              summary: Invalid content type
+              value:
+                id: req-1234567893
+                errors:
+                  - code: request.malformed
+                    title: Request malformed
+                    detail: The Content-Type header must be 'application/json'. Received 'text/plain'.
+    UnauthorizedResponse:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            missingCredentials:
+              summary: Missing authentication credentials
+              value:
+                id: req-2234567890
+                errors:
+                  - code: auth.invalid
+                    title: Invalid authentication
+                    detail: Authentication credentials are missing. Please provide valid X-Space-Id and X-User-Id headers.
+            invalidToken:
+              summary: Invalid or expired token
+              value:
+                id: req-2234567891
+                errors:
+                  - code: auth.invalid
+                    title: Invalid authentication
+                    detail: The provided authentication credentials are invalid or have expired. Please obtain new credentials and try again.
+            revokedCredentials:
+              summary: Revoked credentials
+              value:
+                id: req-2234567892
+                errors:
+                  - code: auth.invalid
+                    title: Invalid authentication
+                    detail: The authentication credentials have been revoked. Please contact your workspace administrator.
+    ForbiddenResponse:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            permissionDenied:
+              summary: Permission denied for resource
+              value:
+                id: req-3234567890
+                errors:
+                  - code: auth.accessDenied
+                    title: Access denied
+                    detail: You do not have permission to perform this operation on the specified resource. Contact your workspace administrator to request access.
+            insufficientScope:
+              summary: Insufficient OAuth scopes
+              value:
+                id: req-3234567891
+                errors:
+                  - code: auth.accessDenied
+                    title: Access denied
+                    detail: 'Your authentication token lacks the required OAuth scopes to perform this operation. Required scopes: ''write:notes''. Please re-authenticate with the necessary scopes.'
+            readOnlyRole:
+              summary: Read-only role restriction
+              value:
+                id: req-3234567892
+                errors:
+                  - code: auth.accessDenied
+                    title: Access denied
+                    detail: Your user role does not permit modification of notes. This operation requires 'Product Manager' or 'Admin' role.
+    NotFoundResponse:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            resourceNotFoundById:
+              summary: Resource not found by ID
+              value:
+                id: req-4234567890
+                errors:
+                  - code: resource.notFound
+                    title: Resource not found
+                    detail: The note with ID '550e8400-e29b-41d4-a716-446655440000' could not be found or you do not have permission to access it.
+            customerNotFoundInRequest:
+              summary: Customer reference not found
+              value:
+                id: req-4234567891
+                errors:
+                  - code: resource.notFound
+                    title: Resource not found
+                    detail: The customer with ID '7c9e6679-7425-40de-944b-e07fc1f90ae7' referenced in the request could not be found or you do not have permission to access it.
+                    source:
+                      pointer: /data/fields/customer
+            linkNotFound:
+              summary: Link not found
+              value:
+                id: req-4234567892
+                errors:
+                  - code: resource.notFound
+                    title: Resource not found
+                    detail: The link with ID 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' for the relationship could not be found or you do not have permission to access it.
+                    source:
+                      pointer: /data/target/id
+            routeNotFound:
+              summary: API route not found
+              value:
+                id: req-4234567893
+                errors:
+                  - code: route.notFound
+                    title: Route not found
+                    detail: The requested URL path '/v2/invalid-endpoint' does not match any defined API route. Please check the API documentation for valid endpoints.
+    RequestTimeoutResponse:
+      description: Request Timeout
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            requestTimeout:
+              summary: Request timeout
+              value:
+                id: req-5234567890
+                errors:
+                  - code: request.timeout
+                    title: Request timeout
+                    detail: The request took too long to process and was terminated. This may be due to server load or complex query parameters. Try simplifying your request or try again later.
+    UnprocessableEntityResponse:
+      description: Validation failed (e.g., missing required fields, unknown fields)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            validationFailed:
+              summary: Validation failed
+              value:
+                id: req-6234567890
+                errors:
+                  - code: validation.failed
+                    title: Validation failed
+                    detail: 'The note type ''invalid-type'' is not supported. Supported types: simple, conversation, opportunity.'
+                    source:
+                      pointer: /data/type
+            validationMultipleFields:
+              summary: Multiple validation errors
+              value:
+                id: req-6234567891
+                errors:
+                  - code: validation.failed
+                    title: Validation failed
+                    detail: The field 'name' cannot be empty when creating a note.
+                    source:
+                      pointer: /data/fields/name
+                  - code: validation.failed
+                    title: Validation failed
+                    detail: The field 'customer' must reference either a 'user' or 'company' type entity.
+                    source:
+                      pointer: /data/fields/customer
+            customerReferenceNotFound:
+              summary: Customer reference not found
+              value:
+                id: req-6234567892
+                errors:
+                  - code: validation.referenceNotFound
+                    title: Referenced resource not found
+                    detail: The customer with ID 'nonexistent-uuid' could not be found or you do not have access to it.
+                    source:
+                      pointer: /data/fields/customer
+            linkReferenceNotFound:
+              summary: Link reference not found
+              value:
+                id: req-6234567893
+                errors:
+                  - code: validation.referenceNotFound
+                    title: Referenced resource not found
+                    detail: The link (feature) with ID '550e8400-e29b-41d4-a716-446655440000' does not exist or is not accessible in this space.
+                    source:
+                      pointer: /data/relationships/0/target/id
+            contentUpdateForbidden:
+              summary: Content update forbidden for notes with linked features
+              value:
+                id: req-6234567894
+                errors:
+                  - code: validation.forbidden
+                    title: Update not allowed
+                    detail: Cannot update content for notes with linked features
+                    source:
+                      pointer: /data/fields/content
+    TooManyRequestsResponse:
+      description: Too Many Requests
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            rateLimitExceeded:
+              summary: Rate limit exceeded
+              value:
+                id: req-7234567890
+                errors:
+                  - code: rate.limitExceeded
+                    title: Rate limit exceeded
+                    detail: 'You have exceeded the allowed number of API requests. Please wait before making additional requests. Rate limit: 1000 requests per hour. Retry after: 2024-01-15T14:30:00Z.'
+            rateLimitPerEndpoint:
+              summary: Rate limit for notes endpoint exceeded
+              value:
+                id: req-7234567891
+                errors:
+                  - code: rate.limitExceeded
+                    title: Rate limit exceeded
+                    detail: 'You have exceeded the rate limit for this endpoint. Rate limit: 100 requests per minute for POST /v2/notes. Retry after: 2024-01-15T14:25:30Z.'
+    InternalServerErrorResponse:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            internalServerError:
+              summary: Unexpected server error
+              value:
+                id: req-8234567890
+                errors:
+                  - code: internal.serverError
+                    title: Internal server error
+                    detail: An unexpected error occurred while processing your request. Please try again later. If the problem persists, contact support with correlation ID 'req-8234567890'.
+            databaseError:
+              summary: Database connection error
+              value:
+                id: req-8234567891
+                errors:
+                  - code: internal.serverError
+                    title: Internal server error
+                    detail: A temporary database error occurred. The request could not be completed. Please try again in a few moments. If the issue continues, contact support with correlation ID 'req-8234567891'.
+            serviceUnavailable:
+              summary: Dependent service unavailable
+              value:
+                id: req-8234567892
+                errors:
+                  - code: internal.serverError
+                    title: Internal server error
+                    detail: A required service is temporarily unavailable. We are working to restore normal operation. Please retry your request. If you need immediate assistance, contact support with correlation ID 'req-8234567892'.
+    ConfigurationResponse:
+      description: Successful response
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: '#/components/schemas/Configuration'
+          example:
+            data:
+              type: simple
+              fields:
+                name:
+                  id: name
+                  name: Name
+                  path: /fields/name
+                  schema:
+                    type: string
+                    maxLength: 255
+                    minLength: 1
+                  lifecycle:
+                    create:
+                      set: true
+                    update:
+                      set: true
+                    patch:
+                      set: true
+                  constraints:
+                    required: true
+                    maxLength: 255
+                    allowEmpty: false
+                  links:
+                    self: https://api.productboard.info/configuration/fields/name
+                owner:
+                  id: owner
+                  name: Owner
+                  path: /fields/owner
+                  schema:
+                    type: object
+                    properties:
+                      email:
+                        type: string
+                        format: email
+                  lifecycle:
+                    create:
+                      set: true
+                    update:
+                      set: true
+                      clear: true
+                    patch:
+                      set: true
+                      clear: true
+                  constraints:
+                    values:
+                      query:
+                        links:
+                          list: https://api.productboard.com/v2/members?active=true&role=product_manager
+                  default:
+                    type: runtime
+                    source: authenticatedMember
+                  links:
+                    self: https://api.productboard.info/configuration/fields/owner
+              relationships:
+                customer:
+                  targetType:
+                    - user
+                    - company
+                  cardinality: single
+                  mandatory: false
+                links:
+                  targetType:
+                    - feature
+                    - subfeature
+                    - component
+                  cardinality: multiple
+                  mandatory: false
+x-readme:
+  samples-languages:
+    - shell
+    - javascript
+    - ruby

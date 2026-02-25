@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Google Sans', Arial, sans-serif;
+      font-size: 13px;
+      color: #202124;
+      padding: 16px;
+      background: #fff;
+    }
+
+    .header {
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #4285f4;
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 500;
+      color: #4285f4;
+      margin: 0;
+    }
+
+    .section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #e8eaed;
+    }
+
+    h2 {
+      font-size: 14px;
+      font-weight: 500;
+      color: #5f6368;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px 16px;
+      margin-bottom: 8px;
+      background: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #3367d6;
+    }
+
+    button:active {
+      background: #2851a3;
+    }
+
+    button:disabled {
+      background: #dadce0;
+      cursor: not-allowed;
+    }
+
+    button.secondary {
+      background: #fff;
+      color: #5f6368;
+      border: 1px solid #dadce0;
+    }
+
+    button.secondary:hover {
+      background: #f8f9fa;
+      border-color: #bdc1c6;
+    }
+
+    button.danger {
+      background: #d93025;
+    }
+
+    button.danger:hover {
+      background: #b31412;
+    }
+
+    .status {
+      padding: 8px 12px;
+      margin-top: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      line-height: 1.4;
+      display: none;
+    }
+
+    .status.info {
+      background: #e8f0fe;
+      color: #1967d2;
+      border-left: 3px solid #4285f4;
+      display: block;
+    }
+
+    .status.success {
+      background: #e6f4ea;
+      color: #137333;
+      border-left: 3px solid #34a853;
+      display: block;
+    }
+
+    .status.error {
+      background: #fce8e6;
+      color: #c5221f;
+      border-left: 3px solid #ea4335;
+      display: block;
+    }
+
+    .status.warn {
+      background: #fef7e0;
+      color: #b06000;
+      border-left: 3px solid #fbbc04;
+      display: block;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: #5f6368;
+      margin-bottom: 6px;
+      margin-top: 12px;
+    }
+
+    label:first-of-type {
+      margin-top: 0;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 13px;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus {
+      outline: none;
+      border-color: #4285f4;
+    }
+
+    input[type="checkbox"] {
+      margin-right: 8px;
+      cursor: pointer;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      margin-top: 12px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .progress-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: #e8f0fe;
+      border-radius: 8px;
+      border: 1px solid #4285f4;
+      display: none;
+    }
+
+    .progress-section.active {
+      display: block;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 24px;
+      background: #fff;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 12px 0;
+      border: 1px solid #4285f4;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4285f4, #34a853);
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .progress-text {
+      text-align: center;
+      font-size: 12px;
+      color: #1967d2;
+      margin-top: 8px;
+      font-weight: 500;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .button-group button {
+      margin-bottom: 0;
+    }
+
+    .help-text {
+      font-size: 11px;
+      color: #5f6368;
+      margin-top: 8px;
+      line-height: 1.4;
+    }
+
+    .divider {
+      height: 1px;
+      background: #e8eaed;
+      margin: 16px 0;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #4285f4;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📝 Notes Import/Export</h1>
+  </div>
+
+  <!-- Batch Progress Section -->
+  <div id="batch-section" class="progress-section">
+    <h2>⏳ Batch Progress</h2>
+    <div class="progress-bar">
+      <div id="progress-fill" class="progress-fill" style="width: 0%">0%</div>
+    </div>
+    <div class="progress-text" id="progress-text">Processing...</div>
+    <div class="button-group">
+      <button onclick="clearBatch()" class="secondary">Clear Queue</button>
+    </div>
+  </div>
+
+  <!-- Export Section -->
+  <div class="section">
+    <h2>📥 Export from Productboard</h2>
+    <label class="checkbox-label">
+      <input type="checkbox" id="export-replace-data" checked>
+      Replace current Notes sheet data (uncheck to append)
+    </label>
+    <button onclick="exportNotes()">Export Notes</button>
+    <div id="export-status" class="status"></div>
+    <div class="help-text">
+      Exports all notes from Productboard v2 API with relationships to the Notes sheet. Choose whether to replace existing data or append to it.
+    </div>
+  </div>
+
+  <!-- Migration Preparation Section -->
+  <div class="section">
+    <h2>🔄 Migration Preparation</h2>
+    <label>
+      Migration Source Name:
+      <input type="text" id="migration-source-name" placeholder="e.g., ProductboardUS">
+    </label>
+    <button onclick="prepareMigration()">Prepare for Migration</button>
+    <div id="migration-prep-status" class="status"></div>
+    <div class="help-text">
+      Prepares notes for migration by copying pb_id to source_record_id and clearing pb_id.
+      This allows notes to be imported as NEW in the target workspace while preserving the original IDs for mapping.
+      Linked entities are retained for hierarchy mapping.
+    </div>
+  </div>
+
+  <!-- Link Notes to Hierarchy Section -->
+  <div class="section">
+    <h2>🔗 Link Notes to Hierarchy</h2>
+
+    <label class="checkbox-label">
+      <input type="checkbox" id="link-migration-mode">
+      Migration mode (map UUIDs via custom field)
+    </label>
+
+    <button onclick="linkNotesToHierarchy()">Link Notes to Hierarchy Items</button>
+
+    <div id="link-status" class="status"></div>
+
+    <div class="help-text">
+      Creates relationships between notes and hierarchy entities (features, components, etc.)
+      based on UUIDs in the "Linked Entities" column. Run this AFTER importing notes.
+      Enable migration mode when migrating between workspaces.
+    </div>
+  </div>
+
+  <!-- Validate Section -->
+  <div class="section">
+    <h2>✅ Validate Data</h2>
+    <button onclick="validateNotes()" class="secondary">Validate Import Data</button>
+    <div id="validate-status" class="status"></div>
+    <div class="help-text">
+      Dry-run validation to check for errors before importing. Results are logged to the Run Log sheet.
+    </div>
+  </div>
+
+  <!-- Import Section -->
+  <div class="section">
+    <h2>📤 Import to Productboard</h2>
+    <button onclick="importNotes()">Import Notes</button>
+    <div id="import-status" class="status"></div>
+    <div class="help-text">
+      Imports notes to Productboard v1 API. Creates new notes or updates existing ones. Progress is logged to the Run Log sheet.
+    </div>
+  </div>
+
+  <!-- Delete Section -->
+  <div class="section">
+    <h2>🗑️ Delete Notes</h2>
+    <button onclick="confirmDeleteNotes()" class="danger">Delete All Notes from Productboard</button>
+    <div id="delete-status" class="status"></div>
+    <div class="help-text">
+      Deletes all notes from Productboard that are listed in the Notes sheet (notes with pb_id). This action cannot be undone.
+    </div>
+  </div>
+
+  <!-- Settings Section -->
+  <div class="section">
+    <h2>⚙️ Settings</h2>
+
+    <label>API Token:</label>
+    <input type="password" id="api-token" placeholder="Enter your Productboard API token">
+
+    <label>Workspace Name (optional):</label>
+    <input type="text" id="workspace-name" placeholder="My Workspace">
+
+    <label class="checkbox-label">
+      <input type="checkbox" id="eu-datacenter">
+      Use EU Datacenter (api.eu.productboard.com)
+    </label>
+
+    <div class="divider"></div>
+
+    <label>Migration Custom Field UUID:</label>
+    <input type="text" id="migration-field-uuid" placeholder="Auto-detected or enter UUID">
+    <button class="secondary" onclick="autoDetectMigrationField()">Auto-Detect Custom Field</button>
+    <div id="field-detect-status" class="status"></div>
+    <div class="help-text">
+      For workspace migration: specify the custom field UUID that stores original hierarchy entity UUIDs.
+      Click "Auto-Detect" to search for a field named "original_uuid".
+    </div>
+
+    <button onclick="saveSettings()" style="margin-top: 16px;">Save Settings</button>
+
+    <div class="divider"></div>
+
+    <button onclick="clearCache()" class="secondary">Clear Configuration Cache</button>
+    <button onclick="setupSheet()" class="secondary">Refresh Notes Sheet</button>
+    <button onclick="deleteSheet()" class="danger">Delete Notes Sheet</button>
+
+    <div id="settings-status" class="status"></div>
+  </div>
+
+  <script>
+    let pollingInterval = null;
+
+    // Initialize on load
+    google.script.run
+      .withSuccessHandler(initializeUI)
+      .withFailureHandler(handleError)
+      .NotesSidebar_getSnapshot();
+
+    function initializeUI(snapshot) {
+      console.log('Snapshot:', snapshot);
+
+      // Populate settings
+      if (snapshot.hasToken) {
+        document.getElementById('api-token').placeholder = snapshot.maskedToken;
+      }
+      document.getElementById('workspace-name').value = snapshot.workspaceName || '';
+      document.getElementById('eu-datacenter').checked = snapshot.useEuDatacenter || false;
+      document.getElementById('migration-field-uuid').value = snapshot.migrationFieldUuid || '';
+
+      // Show batch progress only if there's an active batch with pending jobs
+      if (snapshot.isActive && snapshot.batchStatus && snapshot.batchStatus.pending > 0) {
+        showBatchSection(true); // Show section first
+        showBatchProgress(snapshot.batchStatus); // Update content
+        startPolling();
+      } else {
+        // Ensure batch section is hidden if no active batch
+        showBatchSection(false);
+      }
+    }
+
+    // Export Notes
+    function exportNotes() {
+      clearAllStatuses(); // Clear all status messages
+      showStatus('export-status', 'Exporting notes... Check Run Log sheet for progress.', 'info');
+      showBatchSection(false); // Hide any previous batch indicator
+      disableButtons(true);
+
+      // Get replace data option from checkbox
+      const replaceData = document.getElementById('export-replace-data').checked;
+
+      google.script.run
+        .withSuccessHandler(result => {
+          if (result.batchStarted) {
+            // Batch started - keep buttons disabled and start polling
+            showStatus('export-status', result.message + ' Check Run Log for progress.', 'info');
+            startPolling();
+          } else {
+            // Direct execution (no batch) - re-enable buttons
+            disableButtons(false);
+            showStatus('export-status', result.result.message + ' Check Run Log for details.', 'success');
+          }
+        })
+        .withFailureHandler(err => {
+          disableButtons(false);
+          showStatus('export-status', 'Error: ' + err + ' Check Run Log for details.', 'error');
+        })
+        .NotesSidebar_runAction({ action: 'export-notes', replaceData: replaceData });
+    }
+
+    // Prepare Migration
+    function prepareMigration() {
+      const sourceName = document.getElementById('migration-source-name').value.trim();
+
+      if (!sourceName) {
+        showStatus('migration-prep-status', '✗ Please enter a migration source name', 'error');
+        return;
+      }
+
+      clearAllStatuses();
+      showStatus('migration-prep-status', 'Preparing migration...', 'info');
+      disableButtons(true);
+
+      google.script.run
+        .withSuccessHandler(result => {
+          showStatus('migration-prep-status',
+            `✓ Migration prepared! ${result.result.processedCount} notes ready. pb_id cleared, source tracking added.`,
+            'success');
+          disableButtons(false);
+        })
+        .withFailureHandler(err => {
+          showStatus('migration-prep-status', `✗ Error: ${err.message}`, 'error');
+          disableButtons(false);
+        })
+        .NotesSidebar_runAction({
+          action: 'prepare-migration',
+          sourceName: sourceName
+        });
+    }
+
+    // Auto-Detect Migration Custom Field
+    function autoDetectMigrationField() {
+      clearAllStatuses();
+      showStatus('field-detect-status', 'Searching for custom fields...', 'info');
+      disableButtons(true);
+
+      google.script.run
+        .withSuccessHandler(result => {
+          disableButtons(false);
+          if (result.success && result.fieldId) {
+            document.getElementById('migration-field-uuid').value = result.fieldId;
+            showStatus('field-detect-status',
+              `✓ Found custom field "${result.fieldKey}" (${result.fieldId})`,
+              'success');
+          } else {
+            const extra = result.debugInfo ? ` (${result.debugInfo})` : '';
+            showStatus('field-detect-status',
+              `✗ No "original_uuid" custom field found. Please enter UUID manually.${extra}`,
+              'warn');
+          }
+        })
+        .withFailureHandler(err => {
+          disableButtons(false);
+          const msg = (err && err.message) ? err.message : String(err);
+          showStatus('field-detect-status', `✗ API Error: ${msg}`, 'error');
+        })
+        .NotesSidebar_runAction({ action: 'detect-migration-field' });
+    }
+
+    // Link Notes to Hierarchy
+    function linkNotesToHierarchy() {
+      clearAllStatuses();
+      showStatus('link-status', 'Linking notes to hierarchy... Check Run Log sheet for progress.', 'info');
+      disableButtons(true);
+
+      const migrationMode = document.getElementById('link-migration-mode').checked;
+
+      google.script.run
+        .withSuccessHandler(result => {
+          disableButtons(false);
+          if (result.success) {
+            showStatus('link-status',
+              `✓ Linked notes successfully! ${result.result.successCount} links created, ${result.result.skipCount} skipped. Check Run Log for details.`,
+              'success');
+          } else {
+            showStatus('link-status',
+              `✗ Some links failed. ${result.result.successCount} links created, ${result.result.skipCount} skipped. Check Run Log for details.`,
+              'warning');
+          }
+        })
+        .withFailureHandler(err => {
+          disableButtons(false);
+          showStatus('link-status', `✗ Error: ${err.message}`, 'error');
+        })
+        .NotesSidebar_runAction({
+          action: 'link-notes-to-hierarchy',
+          migrationMode: migrationMode
+        });
+    }
+
+    // Validate Notes
+    function validateNotes() {
+      clearAllStatuses(); // Clear all status messages
+      showStatus('validate-status', 'Validating... Check Run Log sheet for progress.', 'info');
+      disableButtons(true);
+
+      google.script.run
+        .withSuccessHandler(result => {
+          disableButtons(false);
+          const status = result.success ? 'success' : 'error';
+          showStatus('validate-status', result.result.summary + ' Check Run Log for details.', status);
+        })
+        .withFailureHandler(err => {
+          disableButtons(false);
+          showStatus('validate-status', 'Error: ' + err + ' Check Run Log for details.', 'error');
+        })
+        .NotesSidebar_runAction({ action: 'validate-notes' });
+    }
+
+    // Import Notes
+    function importNotes() {
+      clearAllStatuses(); // Clear all status messages
+      showStatus('import-status', 'Importing notes... Check Run Log sheet for progress.', 'info');
+      showBatchSection(false); // Hide any previous batch indicator
+      disableButtons(true);
+
+      google.script.run
+        .withSuccessHandler(result => {
+          if (result.batchStarted) {
+            // Batch started - keep buttons disabled and start polling
+            showStatus('import-status', result.message + ' Check Run Log for progress.', 'info');
+            startPolling();
+          } else {
+            // Direct execution (no batch) - re-enable buttons
+            disableButtons(false);
+            const status = result.success ? 'success' : 'error';
+            const message = result.result.summary || result.result.message;
+            showStatus('import-status', message + ' Check Run Log for details.', status);
+          }
+        })
+        .withFailureHandler(err => {
+          disableButtons(false);
+          showStatus('import-status', 'Error: ' + err + ' Check Run Log for details.', 'error');
+        })
+        .NotesSidebar_runAction({ action: 'import-notes' });
+    }
+
+    // Confirm and Delete All Notes
+    function confirmDeleteNotes() {
+      clearAllStatuses(); // Clear all status messages
+
+      // Show Google Sheets confirmation dialog
+      google.script.run
+        .withSuccessHandler(confirmed => {
+          if (confirmed) {
+            deleteAllNotes();
+          } else {
+            showStatus('delete-status', 'Deletion cancelled.', 'info');
+          }
+        })
+        .withFailureHandler(err => {
+          showStatus('delete-status', 'Error: ' + err, 'error');
+        })
+        .NotesSidebar_showDeleteConfirmation();
+    }
+
+    // Delete All Notes
+    function deleteAllNotes() {
+      clearAllStatuses(); // Clear all status messages
+      showStatus('delete-status', 'Deleting notes... Check Run Log sheet for progress.', 'info');
+      showBatchSection(false); // Hide any previous batch indicator
+      disableButtons(true);
+
+      google.script.run
+        .withSuccessHandler(result => {
+          if (result.batchStarted) {
+            // Batch started - keep buttons disabled and start polling
+            showStatus('delete-status', result.message + ' Check Run Log for progress.', 'info');
+            startPolling();
+          } else {
+            // Direct execution (no batch) - re-enable buttons
+            disableButtons(false);
+            const status = result.success ? 'success' : 'error';
+            const message = result.result.summary || result.result.message;
+            showStatus('delete-status', message + ' Check Run Log for details.', status);
+          }
+        })
+        .withFailureHandler(err => {
+          disableButtons(false);
+          showStatus('delete-status', 'Error: ' + err + ' Check Run Log for details.', 'error');
+        })
+        .NotesSidebar_runAction({ action: 'delete-all-notes' });
+    }
+
+    // Save Settings
+    function saveSettings() {
+      const apiToken = document.getElementById('api-token').value;
+      const workspaceName = document.getElementById('workspace-name').value;
+      const useEuDatacenter = document.getElementById('eu-datacenter').checked;
+      const migrationFieldUuid = document.getElementById('migration-field-uuid').value;
+
+      google.script.run
+        .withSuccessHandler(result => {
+          alert(result.message);
+          // Refresh placeholder if token was saved
+          if (apiToken) {
+            document.getElementById('api-token').value = '';
+            document.getElementById('api-token').placeholder = '••••• (saved)';
+          }
+        })
+        .withFailureHandler(err => {
+          alert('Error saving settings: ' + err);
+        })
+        .NotesSidebar_saveSettings({
+          apiToken: apiToken || undefined,
+          workspaceName: workspaceName,
+          useEuDatacenter: useEuDatacenter,
+          migrationFieldUuid: migrationFieldUuid
+        });
+    }
+
+    // Clear Cache
+    function clearCache() {
+      showStatus('settings-status', '', ''); // Clear previous status
+      showStatus('settings-status', 'Clearing configuration cache...', 'info');
+      disableButtons(true);
+
+      google.script.run
+        .withSuccessHandler(result => {
+          disableButtons(false);
+          showStatus('settings-status', result.message, 'success');
+        })
+        .withFailureHandler(err => {
+          disableButtons(false);
+          showStatus('settings-status', 'Error: ' + err, 'error');
+        })
+        .NotesSidebar_runAction({ action: 'clear-cache' });
+    }
+
+    // Setup Sheet
+    function setupSheet() {
+      clearAllStatuses(); // Clear all status messages
+      showStatus('settings-status', 'Refreshing Notes sheet...', 'info');
+      disableButtons(true);
+
+      google.script.run
+        .withSuccessHandler(result => {
+          disableButtons(false);
+          showStatus('settings-status', result.result.message, 'success');
+        })
+        .withFailureHandler(err => {
+          disableButtons(false);
+          showStatus('settings-status', 'Error: ' + err, 'error');
+        })
+        .NotesSidebar_runAction({ action: 'setup-notes-sheet' });
+    }
+
+    // Delete Sheet
+    function deleteSheet() {
+      if (!confirm('Are you sure you want to delete the Notes sheet? This cannot be undone.')) {
+        return;
+      }
+
+      clearAllStatuses(); // Clear all status messages
+      showStatus('settings-status', 'Deleting Notes sheet...', 'info');
+      disableButtons(true);
+
+      google.script.run
+        .withSuccessHandler(result => {
+          disableButtons(false);
+          showStatus('settings-status', result.result.message, 'success');
+        })
+        .withFailureHandler(err => {
+          disableButtons(false);
+          showStatus('settings-status', 'Error: ' + err, 'error');
+        })
+        .NotesSidebar_runAction({ action: 'delete-notes-sheet' });
+    }
+
+    // Batch Processing
+    function startPolling() {
+      if (pollingInterval) return;
+
+      showBatchSection(true);
+
+      pollingInterval = setInterval(() => {
+        google.script.run
+          .withSuccessHandler(handleBatchProgress)
+          .withFailureHandler(err => {
+            console.error('Polling error:', err);
+          })
+          .NotesSidebar_runAction({ action: 'batch-next' });
+      }, 2000);
+    }
+
+    function stopPolling() {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
+    }
+
+    function handleBatchProgress(result) {
+      console.log('handleBatchProgress:', result);
+
+      // Always update progress if we have summary data
+      if (result.summary) {
+        showBatchProgress(result.summary);
+      }
+
+      // Check if there are still pending jobs in the queue
+      const hasPendingJobs = result.summary && result.summary.pending > 0;
+      const isStillProcessing = result.summary && result.summary.completed < result.summary.total;
+
+      // If there are still pending jobs or processing isn't complete, keep going
+      if (hasPendingJobs || isStillProcessing || result.hasMore) {
+        console.log('Batch still processing - pending:', hasPendingJobs, 'processing:', isStillProcessing, 'hasMore:', result.hasMore);
+        // Make sure batch section stays visible and buttons stay disabled
+        showBatchSection(true);
+        return; // Continue polling
+      }
+
+      // Only process completion if truly done: no pending jobs, no more batches, and marked as completed
+      const allComplete = result.completed && !result.hasMore &&
+                         (!result.summary || (result.summary.pending === 0 && result.summary.completed >= result.summary.total));
+
+      if (allComplete) {
+        console.log('All batches complete - stopping polling');
+        stopPolling();
+
+        // Update final progress one last time
+        if (result.summary) {
+          showBatchProgress(result.summary);
+        }
+
+        // Update status based on which operation completed
+        const message = result.message || 'Batch processing complete. Check Run Log for details.';
+        if (result.type === 'export-notes') {
+          showStatus('export-status', message, 'success');
+        } else if (result.type === 'import-notes') {
+          showStatus('import-status', message, result.success ? 'success' : 'warn');
+        } else if (result.type === 'delete-notes') {
+          showStatus('delete-status', message, result.success ? 'success' : 'warn');
+        }
+
+        // Hide batch section after a short delay to show final status
+        setTimeout(() => {
+          showBatchSection(false);
+          // Re-enable buttons only after batch section is hidden
+          disableButtons(false);
+        }, 2000);
+      }
+    }
+
+    function showBatchProgress(summary) {
+      // Update progress bar
+      const percent = summary.percent || 0;
+      const fill = document.getElementById('progress-fill');
+      fill.style.width = percent + '%';
+      fill.textContent = percent + '%';
+
+      // Update progress message
+      let message = summary.subProgress?.message || `${summary.completed}/${summary.total} jobs complete`;
+
+      // Add error/warning counts if present
+      if (summary.totalErrors > 0 || summary.totalWarnings > 0) {
+        const details = [];
+        if (summary.totalErrors > 0) details.push(`${summary.totalErrors} errors`);
+        if (summary.totalWarnings > 0) details.push(`${summary.totalWarnings} warnings`);
+        message += ` (${details.join(', ')})`;
+      }
+
+      document.getElementById('progress-text').textContent = message;
+
+      // Don't call showBatchSection here - section is already visible from startPolling()
+    }
+
+    function showBatchSection(show) {
+      const section = document.getElementById('batch-section');
+      if (show) {
+        section.classList.add('active');
+      } else {
+        section.classList.remove('active');
+      }
+    }
+
+    function clearBatch() {
+      if (!confirm('Clear the batch queue? This will stop processing.')) {
+        return;
+      }
+
+      stopPolling();
+      showBatchSection(false); // Hide immediately
+      disableButtons(false); // Re-enable buttons
+
+      google.script.run
+        .withSuccessHandler(() => {
+          // Already handled above for immediate feedback
+        })
+        .NotesSidebar_runAction({ action: 'batch-clear' });
+    }
+
+    // UI Helpers
+    function showStatus(elementId, message, type) {
+      const el = document.getElementById(elementId);
+      el.textContent = message;
+      el.className = 'status ' + type;
+
+      // Auto-activate Run Log sheet if message mentions it
+      if (message && message.includes('Check Run Log')) {
+        google.script.run.NotesSidebar_activateRunLogSheet();
+      }
+    }
+
+    /**
+     * Clear all status messages across all sections
+     * Call this when starting a new action to avoid confusion
+     */
+    function clearAllStatuses() {
+      showStatus('export-status', '', '');
+      showStatus('validate-status', '', '');
+      showStatus('import-status', '', '');
+      showStatus('delete-status', '', '');
+      showStatus('settings-status', '', '');
+    }
+
+    function disableButtons(disabled) {
+      // If we're trying to enable buttons but polling is active, keep them disabled
+      if (!disabled && pollingInterval) {
+        console.log('Prevented button enable: polling active');
+        return; // Don't enable buttons while batch is processing
+      }
+
+      // Also prevent enabling if batch section is visible (indicates active batch)
+      const batchSection = document.getElementById('batch-section');
+      if (!disabled && batchSection.classList.contains('active')) {
+        console.log('Prevented button enable: batch section active');
+        return; // Don't enable buttons while batch section is visible
+      }
+
+      const buttons = document.querySelectorAll('button');
+      buttons.forEach(btn => {
+        // When disabling during batch operations, keep "Clear Queue" button enabled
+        if (disabled && btn.textContent.includes('Clear Queue')) {
+          btn.disabled = false; // Keep Clear Queue enabled during batch
+        } else {
+          btn.disabled = disabled;
+        }
+      });
+    }
+
+    function handleError(err) {
+      console.error('Error:', err);
+      alert('An error occurred: ' + err);
+    }
+  </script>
+</body>
+</html>
