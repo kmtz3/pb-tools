@@ -198,7 +198,7 @@ function buildHeaders(t = token, eu = useEu) {
   return h;
 }
 
-function subscribeSSE(url, body, { onProgress, onComplete, onError, onLog = null }) {
+function subscribeSSE(url, body, { onProgress, onComplete, onError, onLog = null, onAbort = null }) {
   // SSE over POST: read the response body as a stream and parse SSE frames manually
   const ctrl = new AbortController();
 
@@ -246,8 +246,11 @@ function subscribeSSE(url, body, { onProgress, onComplete, onError, onLog = null
       }
     }
   }).catch((e) => {
-    // AbortError = user clicked Stop — not a real error
-    if (e.name !== 'AbortError') onError(e.message);
+    if (e.name === 'AbortError') {
+      if (onAbort) onAbort();
+    } else {
+      onError(e.message);
+    }
   });
 
   return ctrl;
@@ -882,7 +885,6 @@ function loadNotesCSV(file) {
 
 const NOTES_FIELDS = [
   { id: 'notes-map-pb-id',          label: 'PB Note UUID',       key: 'pbIdColumn',          required: false, hint: 'If present → update note in-place' },
-  { id: 'notes-map-ext-id',         label: 'External ID',        key: 'extIdColumn',          required: false, hint: 'Matches by source.recordId — creates if not found' },
   { id: 'notes-map-type',           label: 'Note Type',          key: 'typeColumn',           required: false, hint: 'simple, conversation, or opportunity' },
   { id: 'notes-map-title',          label: 'Title',              key: 'titleColumn',          required: true  },
   { id: 'notes-map-content',        label: 'Content',            key: 'contentColumn',        required: false },
@@ -901,7 +903,6 @@ const NOTES_FIELDS = [
 
 const NOTES_AUTODETECT = {
   'notes-map-pb-id':          ['pb_id', 'pb note id', 'note id', 'uuid'],
-  'notes-map-ext-id':         ['ext_id', 'external id', 'source_record_id'],
   'notes-map-type':           ['type', 'note type'],
   'notes-map-title':          ['title', 'name', 'subject'],
   'notes-map-content':        ['content', 'body', 'description'],
@@ -1156,6 +1157,19 @@ function runNotesImport(mapping) {
         setText('notes-import-run-title', 'Import failed');
         $('notes-import-summary-alert').innerHTML = `<div class="alert alert-danger"><span class="alert-icon">⚠️</span><span>${esc(msg)}</span></div>`;
       },
+
+      onAbort: () => {
+        hide('btn-stop-notes-import');
+        setText('notes-import-run-title', 'Import stopped');
+        setNotesImportProgress('Import stopped', 100);
+        appendNotesLogEntry({ level: 'warn', message: 'Import stopped by user', ts: new Date().toISOString() });
+        // Show results (summary + "Import another" button) without hiding the log
+        show('notes-import-results');
+        const processed = notesLogCounts.success + notesLogCounts.error;
+        $('notes-import-summary-alert').innerHTML =
+          `<div class="alert alert-warn"><span class="alert-icon">⏹</span>` +
+          `<span>Stopped — ${processed} note(s) processed · ${notesLogCounts.error} error(s)</span></div>`;
+      },
     }
   );
 }
@@ -1197,7 +1211,6 @@ $('btn-stop-notes-import').addEventListener('click', () => {
     notesImportController = null;
   }
   hide('btn-stop-notes-import');
-  appendNotesLogEntry({ level: 'warn', message: 'Stop requested — waiting for current row to finish…', ts: new Date().toISOString() });
 });
 
 $('btn-notes-import-again').addEventListener('click', () => {

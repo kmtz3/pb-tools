@@ -49,13 +49,13 @@ const DOMAIN_RE = /^[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 // CSV column headers for export (order must match transformation in buildNoteRow)
 const CSV_FIELDS = [
-  'pb_id', 'ext_id', 'type', 'title', 'content', 'display_url',
+  'pb_id', 'type', 'title', 'content', 'display_url',
   'user_email', 'company_domain', 'owner_email', 'creator_email',
   'tags', 'source_origin', 'source_record_id', 'archived', 'processed',
   'created_at', 'updated_at', 'linked_entities',
 ];
 const CSV_HEADERS = [
-  'PB Note ID', 'External ID (ext_id)', 'Note Type', 'Title', 'Content', 'Display URL',
+  'PB Note ID', 'Note Type', 'Title', 'Content', 'Display URL',
   'User Email', 'Company Domain', 'Owner Email', 'Creator Email',
   'Tags', 'Source Origin', 'Source Record ID', 'Archived', 'Processed',
   'Created At', 'Updated At', 'Linked Entities',
@@ -259,7 +259,6 @@ function buildNoteRow(note, userCache, companyCache, sourceMap) {
 
   return {
     pb_id: note.id || '',
-    ext_id: sourceRecordId,   // ext_id column mirrors source_record_id for round-trip import
     type: note.type || 'simple',
     title: f.name || '',
     content,
@@ -282,16 +281,6 @@ function buildNoteRow(note, userCache, companyCache, sourceMap) {
 // ---------------------------------------------------------------------------
 // Import helpers
 // ---------------------------------------------------------------------------
-
-/** Find existing note by source.recordId. Returns first match id or null. */
-async function findNoteBySourceRecordId(pbFetch, withRetry, recordId) {
-  const encoded = encodeURIComponent(recordId);
-  const r = await withRetry(
-    () => pbFetch('get', `/v2/notes?source[recordId]=${encoded}`),
-    `search note by ext_id ${recordId}`
-  );
-  return r.data?.[0]?.id || null;
-}
 
 /** Build v1 create/update payload from a CSV row (using mapping). */
 function buildV1Payload(row, mapping, isCreate) {
@@ -483,8 +472,12 @@ async function buildMigrationCache(pbFetch, withRetry, fieldName = 'original_uui
   for (const type of types) {
     let cursor = null;
     do {
-      const url = `/v2/entities?type=${type}${cursor ? `&pageCursor=${encodeURIComponent(cursor)}` : ''}`;
-      const r = await withRetry(() => pbFetch('get', url), `fetch ${type} for migration cache`);
+      const body = { data: { type } };
+      if (cursor) body.data.pageCursor = cursor;
+      const r = await withRetry(
+        () => pbFetch('post', '/v2/entities/search', body),
+        `fetch ${type} for migration cache`
+      );
       for (const entity of r.data || []) {
         const originalUuid = (entity.fields || {})[fieldId];
         if (originalUuid && UUID_RE.test(originalUuid)) {
@@ -573,7 +566,6 @@ router.post('/import/preview', async (req, res) => {
 
   const errors = [];
   const warnings = [];
-  const extIdsSeen = new Set();
   const pbIdsSeen = new Set();
 
   rows.forEach((row, i) => {
@@ -584,7 +576,6 @@ router.post('/import/preview', async (req, res) => {
     const title = cell(row, mapping.titleColumn);
     const content = cell(row, mapping.contentColumn);
     const pbId = cell(row, mapping.pbIdColumn);
-    const extId = cell(row, mapping.extIdColumn);
     const userEmail = cell(row, mapping.userEmailColumn);
     const ownerEmail = cell(row, mapping.ownerEmailColumn);
     const creatorEmail = cell(row, mapping.creatorEmailColumn);
@@ -602,12 +593,6 @@ router.post('/import/preview', async (req, res) => {
     if (pbId && UUID_RE.test(pbId)) {
       if (pbIdsSeen.has(pbId)) err('pb_id', `Duplicate pb_id: ${pbId}`);
       else pbIdsSeen.add(pbId);
-    }
-
-    // Ext ID duplicates
-    if (extId) {
-      if (extIdsSeen.has(extId)) err('ext_id', `Duplicate ext_id: ${extId}`);
-      else extIdsSeen.add(extId);
     }
 
     // Email format
@@ -700,7 +685,6 @@ router.post('/import/run', async (req, res) => {
 
       try {
         const pbId = cell(row, mapping.pbIdColumn);
-        const extId = cell(row, mapping.extIdColumn);
         let sourceOrigin = cell(row, mapping.sourceOriginColumn);
         let sourceRecordId = cell(row, mapping.sourceRecordIdColumn);
 
@@ -719,12 +703,6 @@ router.post('/import/run', async (req, res) => {
         if (pbId && UUID_RE.test(pbId)) {
           action = 'UPDATE';
           targetNoteId = pbId;
-        } else if (extId) {
-          const found = await findNoteBySourceRecordId(pbFetch, withRetry, extId);
-          if (found) {
-            action = 'UPDATE';
-            targetNoteId = found;
-          }
         }
 
         const payload = buildV1Payload(row, mapping, action === 'CREATE');
@@ -942,9 +920,7 @@ router.post('/migrate-prep', async (req, res) => {
 
   if (!rows.length) return res.json({ csv: '', count: 0 });
 
-  // Ensure ext_id and source_origin columns exist in the output
-  // (They may or may not be present in the input CSV)
-  const hasExtId = headers.includes('ext_id');
+  // Ensure source_origin column exists in the output
   const hasSourceOrigin = headers.includes('source_origin');
 
   let processed = 0;
@@ -954,8 +930,8 @@ router.post('/migrate-prep', async (req, res) => {
     const pbId = (out['pb_id'] || '').trim();
 
     if (pbId) {
-      // Copy pb_id → ext_id (preserves original UUID for matching in target workspace)
-      out['ext_id'] = pbId;
+      // Move pb_id → source_record_id (becomes the stable ID for deduplication on re-import)
+      out['source_record_id'] = pbId;
       // Set source_origin to migration name
       out['source_origin'] = sourceOriginName.trim();
       // Clear pb_id (will be a fresh create in the target workspace)
@@ -966,9 +942,8 @@ router.post('/migrate-prep', async (req, res) => {
     return out;
   });
 
-  // Build output header list — ensure pb_id, ext_id, source_origin are present
+  // Build output header list — ensure source_origin is present
   const outHeaders = [...headers];
-  if (!hasExtId) outHeaders.splice(1, 0, 'ext_id');
   if (!hasSourceOrigin) {
     const soIdx = outHeaders.indexOf('source_record_id');
     outHeaders.splice(soIdx >= 0 ? soIdx : outHeaders.length, 0, 'source_origin');

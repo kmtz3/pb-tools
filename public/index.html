@@ -502,7 +502,7 @@
                   <span>Fetches notes via the v2 API (relationships included inline), then enriches any missing source origin/record ID from the v1 API. Large workspaces may take a few minutes.</span>
                 </div>
                 <p class="text-sm text-muted">
-                  <strong>Columns exported:</strong> PB Note ID, External ID, Type, Title, Content, Display URL, User Email, Company Domain, Owner Email, Creator Email, Tags, Source Origin, Source Record ID, Archived, Processed, Created At, Updated At, Linked Entities.
+                  <strong>Columns exported:</strong> PB Note ID, Type, Title, Content, Display URL, User Email, Company Domain, Owner Email, Creator Email, Tags, Source Origin, Source Record ID, Archived, Processed, Created At, Updated At, Linked Entities.
                 </p>
 
                 <div class="filter-block mt-16">
@@ -867,7 +867,7 @@
                   <ol style="margin:6px 0 0 16px;padding:0;line-height:1.7">
                     <li>Export notes from your source workspace (Export notes tab).</li>
                     <li>Upload that CSV here and enter the migration source name.</li>
-                    <li>Download the transformed CSV — each note's <em>pb_id</em> is copied to <em>ext_id</em> (so it can be matched on re-import), <em>source_origin</em> is set to your source name, and <em>pb_id</em> is cleared so Productboard creates a fresh note in the target workspace.</li>
+                    <li>Download the transformed CSV — each note's <em>pb_id</em> is moved to <em>source_record_id</em> (so it can be deduplicated on re-import), <em>source_origin</em> is set to your source name, and <em>pb_id</em> is cleared so Productboard creates a fresh note in the target workspace.</li>
                     <li>Import the transformed CSV into the target workspace (Import notes tab). Enable <em>Migration mode</em> to also remap linked entity UUIDs.</li>
                   </ol>
                 </span>
@@ -885,7 +885,7 @@
                   <label>Migration source name <span class="label-hint">— used as source_origin value</span></label>
                   <input type="text" id="notes-migrate-source-name" placeholder="e.g. workspace-v1"
                     style="display:block;width:100%;max-width:320px;padding:8px 10px;border:1px solid var(--c-border);border-radius:6px;font-size:14px;margin-top:6px" />
-                  <p class="text-sm text-muted mt-8">Example: if you enter <code>acme-source</code>, the ext_id column will contain the original pb_id and source_origin will be set to <code>acme-source</code>.</p>
+                  <p class="text-sm text-muted mt-8">Example: if you enter <code>acme-source</code>, the original pb_id is written to source_record_id and source_origin is set to <code>acme-source</code>. Any pre-existing source_record_id on the note is replaced.</p>
                   <button class="btn btn-primary mt-12" id="btn-notes-migrate-run">🔄 Prepare CSV</button>
                 </div>
               </div>
