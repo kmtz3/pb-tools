@@ -51,12 +51,14 @@ const DOMAIN_RE = /^[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const CSV_FIELDS = [
   'pb_id', 'ext_id', 'type', 'title', 'content', 'display_url',
   'user_email', 'company_domain', 'owner_email', 'creator_email',
-  'tags', 'source_origin', 'source_record_id', 'archived', 'processed', 'linked_entities',
+  'tags', 'source_origin', 'source_record_id', 'archived', 'processed',
+  'created_at', 'updated_at', 'linked_entities',
 ];
 const CSV_HEADERS = [
   'PB Note ID', 'External ID (ext_id)', 'Note Type', 'Title', 'Content', 'Display URL',
   'User Email', 'Company Domain', 'Owner Email', 'Creator Email',
-  'Tags', 'Source Origin', 'Source Record ID', 'Archived', 'Processed', 'Linked Entities',
+  'Tags', 'Source Origin', 'Source Record ID', 'Archived', 'Processed',
+  'Created At', 'Updated At', 'Linked Entities',
 ];
 
 // ---------------------------------------------------------------------------
@@ -104,13 +106,18 @@ function normalizeUrl(url) {
 // ---------------------------------------------------------------------------
 
 /** Paginate v2 notes list. Returns array of note objects (relationships inline). */
-async function fetchAllNotesV2(pbFetch, withRetry, onProgress) {
+async function fetchAllNotesV2(pbFetch, withRetry, onProgress, filters = {}) {
   const notes = [];
   let cursor = null;
   let page = 0;
 
   do {
-    const url = `/v2/notes${cursor ? `?pageCursor=${encodeURIComponent(cursor)}` : ''}`;
+    const params = new URLSearchParams();
+    if (filters.createdFrom) params.set('createdFrom', filters.createdFrom);
+    if (filters.createdTo)   params.set('createdTo',   filters.createdTo);
+    if (cursor)              params.set('pageCursor',   cursor);
+    const qs = params.toString();
+    const url = `/v2/notes${qs ? `?${qs}` : ''}`;
     const response = await withRetry(() => pbFetch('get', url), `fetch notes page ${page + 1}`);
     if (response.data?.length) notes.push(...response.data);
     cursor = extractCursor(response.links?.next);
@@ -119,6 +126,20 @@ async function fetchAllNotesV2(pbFetch, withRetry, onProgress) {
   } while (cursor);
 
   return notes;
+}
+
+/** Build a descriptive export filename based on optional date filter bounds. */
+function buildExportFilename(createdFrom, createdTo) {
+  if (!createdFrom && !createdTo) {
+    return `notes-export-${new Date().toISOString().slice(0, 10)}.csv`;
+  }
+  if (createdFrom && createdTo) {
+    return `notes-export-${createdFrom.slice(0, 10)}-to-${createdTo.slice(0, 10)}.csv`;
+  }
+  if (createdFrom) {
+    return `notes-export-from-${createdFrom.slice(0, 10)}.csv`;
+  }
+  return `notes-export-to-${createdTo.slice(0, 10)}.csv`;
 }
 
 /** Build UUID→email map from v1 /users endpoint. */
@@ -252,6 +273,8 @@ function buildNoteRow(note, userCache, companyCache, sourceMap) {
     source_record_id: sourceRecordId,
     archived: isTruthy(f.archived) ? 'TRUE' : 'FALSE',
     processed: isTruthy(f.processed) ? 'TRUE' : 'FALSE',
+    created_at: note.createdAt || '',
+    updated_at: note.updatedAt || '',
     linked_entities: linkedEntities,
   };
 }
@@ -486,16 +509,20 @@ router.post('/export', async (req, res) => {
 
   const sse = startSSE(res);
   const { pbFetch, withRetry } = createClient(token, useEu);
+  const { createdFrom, createdTo } = req.body || {};
 
   try {
-    // Step 1: Fetch all notes (relationships included inline in v2 list)
-    sse.progress('Fetching notes from Productboard…', 5);
+    // Step 1: Fetch notes (with optional created-at filter)
+    const filterDesc = createdFrom || createdTo
+      ? ` (filtered by date)`
+      : '';
+    sse.progress(`Fetching notes from Productboard${filterDesc}…`, 5);
     const notes = await fetchAllNotesV2(pbFetch, withRetry, (count) => {
       sse.progress(`Fetched ${count} notes…`, Math.min(5 + Math.round(count / 100), 35));
-    });
+    }, { createdFrom, createdTo });
 
     if (notes.length === 0) {
-      sse.complete({ csv: '', filename: 'notes.csv', count: 0 });
+      sse.complete({ csv: '', filename: 'notes-export.csv', count: 0 });
       sse.done();
       return;
     }
@@ -517,10 +544,10 @@ router.post('/export', async (req, res) => {
     sse.progress('Building CSV…', 85);
     const rows = notes.map((note) => buildNoteRow(note, userCache, companyCache, sourceMap));
 
-    const date = new Date().toISOString().slice(0, 10);
     const csv = generateCSV(rows, CSV_FIELDS, CSV_FIELDS);
+    const filename = buildExportFilename(createdFrom, createdTo);
 
-    sse.complete({ csv, filename: `notes-${date}.csv`, count: notes.length });
+    sse.complete({ csv, filename, count: notes.length });
   } catch (err) {
     sse.error(parseApiError(err));
   } finally {

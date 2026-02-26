@@ -90,6 +90,12 @@
           <div class="tool-card-desc">Import and delete features, stories, and more.</div>
         </div>
 
+        <div class="tool-card tool-card-soon">
+          <div class="tool-card-icon">👥</div>
+          <div class="tool-card-name">Teams membership <span class="badge badge-muted">Soon</span></div>
+          <div class="tool-card-desc">Bulk-manage team assignments across entities.</div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -109,6 +115,12 @@
           </button>
           <button class="nav-item" data-view="import" id="nav-import">
             <span class="icon">📥</span> Import companies
+          </button>
+          <button class="nav-item" data-view="companies-delete-csv" id="nav-companies-delete-csv">
+            <span class="icon">🗑</span> Delete from CSV
+          </button>
+          <button class="nav-item" data-view="companies-delete-all" id="nav-companies-delete-all">
+            <span class="icon">⚠️</span> Delete all companies
           </button>
         </div>
 
@@ -345,6 +357,132 @@
         </div><!-- /view-import -->
 
         <!-- ════════════════════════════════════════
+             COMPANIES DELETE VIEWS
+        ════════════════════════════════════════ -->
+
+        <!-- ── COMPANIES DELETE FROM CSV ── -->
+        <div id="view-companies-delete-csv" class="hidden">
+
+          <!-- Step 1: Upload -->
+          <div class="panel" id="companies-delete-csv-step-upload">
+            <div class="panel-header">
+              <div class="panel-title">Delete companies from CSV</div>
+              <div class="panel-subtitle">Upload a CSV containing company UUIDs and permanently delete those companies.</div>
+            </div>
+            <hr class="panel-divider mt-12" />
+            <div class="panel-body">
+              <div class="alert alert-warn mb-16">
+                <span class="alert-icon">⚠️</span>
+                <span>This action is <strong>irreversible</strong>. Deleted companies cannot be recovered. You can use the export CSV directly — just select the <em>id</em> column.</span>
+              </div>
+              <div class="dropzone" id="companies-delete-dropzone">
+                <span class="dropzone-icon">📄</span>
+                <div class="dropzone-label">Drop a CSV file here</div>
+                <div class="dropzone-hint">or click to browse</div>
+              </div>
+              <input type="file" id="companies-delete-file-input" accept=".csv,text/csv" class="hidden" />
+            </div>
+          </div>
+
+          <!-- Step 2: Column picker + confirm -->
+          <div class="panel mt-16 hidden" id="companies-delete-csv-step-confirm">
+            <div class="panel-header">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="panel-title">Confirm deletion</div>
+                  <div class="panel-subtitle" id="companies-delete-csv-subtitle"></div>
+                </div>
+                <button class="btn btn-ghost btn-sm" id="btn-companies-delete-reupload">↩ Re-upload</button>
+              </div>
+            </div>
+            <hr class="panel-divider mt-12" />
+            <div class="panel-body">
+              <div class="mb-16">
+                <label>Which column contains the company UUIDs?</label>
+                <select id="companies-delete-uuid-column" class="mt-8" style="width:100%;max-width:320px;padding:6px 8px;border:1px solid var(--c-border);border-radius:6px;font-size:14px"></select>
+              </div>
+              <div id="companies-delete-csv-preview" class="mb-16 text-sm text-muted font-mono hidden"></div>
+              <button class="btn btn-danger" id="btn-companies-delete-csv-run">🗑 Delete companies</button>
+            </div>
+          </div>
+
+          <!-- Step 3: Progress + log -->
+          <div class="panel mt-16 hidden" id="companies-delete-csv-step-run">
+            <div class="panel-header">
+              <div class="flex items-center justify-between">
+                <div class="panel-title" id="companies-delete-csv-run-title">Deleting companies…</div>
+                <button class="btn btn-danger btn-sm hidden" id="btn-stop-companies-delete-csv">⏹ Stop</button>
+              </div>
+            </div>
+            <hr class="panel-divider mt-12" />
+            <div class="panel-body">
+              <div id="companies-delete-csv-running">
+                <div class="progress-wrap">
+                  <div class="progress-bar" id="companies-delete-csv-progress-bar" style="width:0%"></div>
+                </div>
+                <div class="progress-label">
+                  <span id="companies-delete-csv-progress-msg">Starting…</span>
+                  <span id="companies-delete-csv-progress-pct">0%</span>
+                </div>
+                <div id="companies-delete-csv-live-log" class="live-log hidden mt-16">
+                  <div class="live-log-header"><span>Live log</span></div>
+                  <div id="companies-delete-csv-log-entries" class="live-log-scroll"></div>
+                </div>
+              </div>
+              <div id="companies-delete-csv-results" class="hidden">
+                <div id="companies-delete-csv-summary-alert"></div>
+                <button class="btn btn-secondary mt-16" id="btn-companies-delete-csv-again">← Delete more</button>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /view-companies-delete-csv -->
+
+        <!-- ── COMPANIES DELETE ALL ── -->
+        <div id="view-companies-delete-all" class="hidden">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Delete all companies</div>
+              <div class="panel-subtitle">Permanently delete every company in your Productboard workspace.</div>
+            </div>
+            <hr class="panel-divider mt-12" />
+            <div class="panel-body">
+
+              <div id="companies-delete-all-idle">
+                <div class="alert alert-danger mb-16">
+                  <span class="alert-icon">⛔</span>
+                  <span><strong>This will permanently delete every company in your workspace.</strong> This action cannot be undone and there is no way to recover deleted companies. Use with extreme caution — ideally export first.</span>
+                </div>
+                <p class="text-sm text-muted mb-16">Type <strong>DELETE</strong> in the box below to enable the button.</p>
+                <input type="text" id="companies-delete-all-confirm-input" placeholder="Type DELETE to confirm" autocomplete="off"
+                  style="display:block;width:100%;max-width:320px;padding:8px 10px;border:1px solid var(--c-border);border-radius:6px;font-size:14px;margin-bottom:12px" />
+                <button class="btn btn-danger" id="btn-companies-delete-all-run" disabled>⛔ Delete all companies</button>
+              </div>
+
+              <div id="companies-delete-all-running" class="hidden">
+                <div class="progress-wrap">
+                  <div class="progress-bar" id="companies-delete-all-progress-bar" style="width:0%"></div>
+                </div>
+                <div class="progress-label">
+                  <span id="companies-delete-all-progress-msg">Starting…</span>
+                  <span id="companies-delete-all-progress-pct">0%</span>
+                </div>
+                <div id="companies-delete-all-live-log" class="live-log hidden mt-16">
+                  <div class="live-log-header"><span>Live log</span></div>
+                  <div id="companies-delete-all-log-entries" class="live-log-scroll"></div>
+                </div>
+              </div>
+
+              <div id="companies-delete-all-results" class="hidden">
+                <div id="companies-delete-all-summary-alert"></div>
+                <button class="btn btn-secondary mt-16" id="btn-companies-delete-all-again">← Start over</button>
+              </div>
+
+            </div>
+          </div>
+        </div><!-- /view-companies-delete-all -->
+
+        <!-- ════════════════════════════════════════
              NOTES VIEWS
         ════════════════════════════════════════ -->
 
@@ -364,8 +502,43 @@
                   <span>Fetches notes via the v2 API (relationships included inline), then enriches any missing source origin/record ID from the v1 API. Large workspaces may take a few minutes.</span>
                 </div>
                 <p class="text-sm text-muted">
-                  <strong>Columns exported:</strong> PB Note ID, External ID, Type, Title, Content, Display URL, User Email, Company Domain, Owner Email, Creator Email, Tags, Source Origin, Source Record ID, Archived, Processed, Linked Entities.
+                  <strong>Columns exported:</strong> PB Note ID, External ID, Type, Title, Content, Display URL, User Email, Company Domain, Owner Email, Creator Email, Tags, Source Origin, Source Record ID, Archived, Processed, Created At, Updated At, Linked Entities.
                 </p>
+
+                <div class="filter-block mt-16">
+                  <p class="filter-block-label">Date filter <span class="label-hint">(optional)</span></p>
+                  <div class="filter-radios">
+                    <label class="radio-label"><input type="radio" name="notes-date-filter" value="none" checked> No filter — export all notes</label>
+                    <label class="radio-label"><input type="radio" name="notes-date-filter" value="range"> Date range</label>
+                    <label class="radio-label"><input type="radio" name="notes-date-filter" value="dynamic"> Past N period</label>
+                  </div>
+
+                  <div id="notes-filter-range" class="filter-sub hidden mt-12">
+                    <div class="input-row">
+                      <div class="field mb-0">
+                        <label for="notes-filter-from" class="text-sm">From <span class="label-hint">(leave blank for open start)</span></label>
+                        <input type="date" id="notes-filter-from">
+                      </div>
+                      <div class="field mb-0">
+                        <label for="notes-filter-to" class="text-sm">To <span class="label-hint">(leave blank for open end)</span></label>
+                        <input type="date" id="notes-filter-to">
+                      </div>
+                    </div>
+                  </div>
+
+                  <div id="notes-filter-dynamic" class="filter-sub hidden mt-12">
+                    <label class="text-sm">Export notes created in the past</label>
+                    <div class="filter-dynamic-row mt-4">
+                      <input type="number" id="notes-filter-n" min="1" value="7" style="width:72px">
+                      <select id="notes-filter-period" style="width:auto">
+                        <option value="days">days</option>
+                        <option value="weeks">weeks</option>
+                        <option value="months">months</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
                 <button class="btn btn-primary mt-16" id="btn-notes-export">Export notes</button>
               </div>
 

@@ -183,6 +183,7 @@ document.querySelectorAll('.nav-item').forEach((btn) => {
 function showView(view) {
   [
     'export', 'import',
+    'companies-delete-csv', 'companies-delete-all',
     'notes-export', 'notes-import', 'notes-delete-csv', 'notes-delete-all', 'notes-migrate',
   ].forEach((v) => {
     const el = $(`view-${v}`);
@@ -745,23 +746,67 @@ $('btn-notes-export').addEventListener('click', startNotesExport);
 $('btn-notes-export-again').addEventListener('click', resetNotesExport);
 $('btn-notes-export-retry').addEventListener('click', startNotesExport);
 
+document.querySelectorAll('input[name="notes-date-filter"]').forEach(r => {
+  r.addEventListener('change', () => {
+    hide('notes-filter-range');
+    hide('notes-filter-dynamic');
+    if (r.value === 'range')   show('notes-filter-range');
+    if (r.value === 'dynamic') show('notes-filter-dynamic');
+  });
+});
+
+function resolveNotesDateFilter() {
+  const mode = document.querySelector('input[name="notes-date-filter"]:checked')?.value;
+  if (!mode || mode === 'none') return {};
+
+  if (mode === 'range') {
+    const from = document.getElementById('notes-filter-from').value;  // 'YYYY-MM-DD' or ''
+    const to   = document.getElementById('notes-filter-to').value;
+    return {
+      createdFrom: from ? `${from}T00:00:00Z` : undefined,
+      createdTo:   to   ? `${to}T23:59:59Z`   : undefined,
+    };
+  }
+
+  if (mode === 'dynamic') {
+    const n      = parseInt(document.getElementById('notes-filter-n').value, 10) || 7;
+    const period = document.getElementById('notes-filter-period').value;
+    const now    = new Date();
+    const from   = new Date(now);
+    if (period === 'days')   from.setDate(now.getDate() - n);
+    if (period === 'weeks')  from.setDate(now.getDate() - n * 7);
+    if (period === 'months') from.setMonth(now.getMonth() - n);
+    return { createdFrom: from.toISOString(), createdTo: now.toISOString() };
+  }
+
+  return {};
+}
+
 function startNotesExport() {
+  const filters = resolveNotesDateFilter();
+
+  if (filters.createdFrom && filters.createdTo && filters.createdFrom > filters.createdTo) {
+    hide('notes-export-idle');
+    setNotesExportError('"From" date must be before "To" date.');
+    return;
+  }
+
   hide('notes-export-idle');
   show('notes-export-running');
   hide('notes-export-done');
   hide('notes-export-error');
   setNotesExportProgress('Starting…', 0);
 
-  subscribeSSE('/api/notes/export', {}, {
+  subscribeSSE('/api/notes/export', filters, {
     onProgress: ({ message, percent }) => setNotesExportProgress(message, percent),
     onComplete: (data) => {
       hide('notes-export-running');
       if (!data.csv && data.count === 0) {
-        setNotesExportError('No notes found in this workspace.');
+        setNotesExportError('No notes found matching your filters.');
         return;
       }
       lastNotesExportCSV = data.csv;
-      lastNotesExportFilename = data.filename || 'notes.csv';
+      lastNotesExportFilename = data.filename || 'notes-export.csv';
       show('notes-export-done');
       setText('notes-export-done-msg', `Exported ${data.count} notes. Ready to download.`);
     },
@@ -1395,6 +1440,241 @@ $('btn-notes-delete-all-again').addEventListener('click', () => {
   hide('notes-delete-all-running');
   hide('notes-delete-all-results');
   show('notes-delete-all-idle');
+});
+
+// ══════════════════════════════════════════════════════════
+// COMPANIES — Delete from CSV
+// ══════════════════════════════════════════════════════════
+
+let companiesDeleteParsedCSV = null;
+let companiesDeleteController = null;
+
+const companiesDeleteDropzone  = $('companies-delete-dropzone');
+const companiesDeleteFileInput = $('companies-delete-file-input');
+
+companiesDeleteDropzone.addEventListener('click', () => companiesDeleteFileInput.click());
+companiesDeleteFileInput.addEventListener('change', (e) => {
+  if (e.target.files[0]) loadCompaniesDeleteCSV(e.target.files[0]);
+});
+companiesDeleteDropzone.addEventListener('dragover', (e) => { e.preventDefault(); companiesDeleteDropzone.classList.add('drag-over'); });
+companiesDeleteDropzone.addEventListener('dragleave', () => companiesDeleteDropzone.classList.remove('drag-over'));
+companiesDeleteDropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  companiesDeleteDropzone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) loadCompaniesDeleteCSV(file);
+});
+
+function loadCompaniesDeleteCSV(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) { alert('CSV appears empty.'); return; }
+    const headers = parseCSVHeaders(text);
+    companiesDeleteParsedCSV = { raw: text, headers, rowCount: lines.length - 1 };
+
+    // Populate column picker
+    const sel = $('companies-delete-uuid-column');
+    sel.innerHTML = headers.map((h) => `<option value="${esc(h)}">${esc(h)}</option>`).join('');
+
+    // Auto-select id/pb_id/uuid column — export CSV uses 'id' as the UUID column
+    const auto = headers.find((h) => ['pb_id', 'id', 'uuid'].includes(h.toLowerCase()));
+    if (auto) sel.value = auto;
+
+    setText('companies-delete-csv-subtitle', `${companiesDeleteParsedCSV.rowCount} rows · ${headers.length} columns`);
+    updateCompaniesDeleteCSVPreview();
+    show('companies-delete-csv-step-confirm');
+  };
+  reader.readAsText(file);
+}
+
+$('companies-delete-uuid-column').addEventListener('change', updateCompaniesDeleteCSVPreview);
+
+function updateCompaniesDeleteCSVPreview() {
+  const col = $('companies-delete-uuid-column').value;
+  if (!companiesDeleteParsedCSV || !col) return;
+
+  const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const headers = parseCSVHeaders(companiesDeleteParsedCSV.raw);
+  const colIdx = headers.indexOf(col);
+  if (colIdx < 0) return;
+
+  // Extract first 5 valid UUIDs for preview
+  const lines = companiesDeleteParsedCSV.raw.trim().split('\n').slice(1);
+  const uuids = lines
+    .map((l) => l.split(',')[colIdx]?.trim().replace(/^"|"$/g, ''))
+    .filter((v) => UUID_PATTERN.test(v))
+    .slice(0, 5);
+
+  const preview = $('companies-delete-csv-preview');
+  if (uuids.length > 0) {
+    preview.textContent = `First UUIDs: ${uuids.join(', ')}${lines.length > 5 ? ', …' : ''}`;
+    show('companies-delete-csv-preview');
+  } else {
+    preview.textContent = 'No valid UUIDs found in this column.';
+    show('companies-delete-csv-preview');
+  }
+}
+
+$('btn-companies-delete-reupload').addEventListener('click', () => {
+  companiesDeleteParsedCSV = null;
+  companiesDeleteFileInput.value = '';
+  hide('companies-delete-csv-step-confirm');
+  hide('companies-delete-csv-step-run');
+});
+
+$('btn-companies-delete-csv-run').addEventListener('click', () => {
+  const col = $('companies-delete-uuid-column').value;
+  if (!col || !companiesDeleteParsedCSV) return;
+  startCompaniesDeleteCSV(col);
+});
+
+function startCompaniesDeleteCSV(uuidColumn) {
+  hide('companies-delete-csv-step-confirm');
+  show('companies-delete-csv-step-run');
+  setText('companies-delete-csv-run-title', 'Deleting companies…');
+  show('companies-delete-csv-running');
+  hide('companies-delete-csv-results');
+  setCompaniesDeleteCSVProgress('Starting…', 0);
+
+  $('companies-delete-csv-log-entries').innerHTML = '';
+  hide('companies-delete-csv-live-log');
+
+  show('btn-stop-companies-delete-csv');
+
+  companiesDeleteController = subscribeSSE(
+    '/api/companies/delete/by-csv',
+    { csvText: companiesDeleteParsedCSV.raw, uuidColumn },
+    {
+      onProgress: ({ message, percent }) => setCompaniesDeleteCSVProgress(message, percent),
+
+      onLog: (entry) => {
+        const logEl = $('companies-delete-csv-live-log');
+        const entries = $('companies-delete-csv-log-entries');
+        if (logEl.classList.contains('hidden')) show('companies-delete-csv-live-log');
+        const e = document.createElement('div');
+        e.className = `log-entry ${entry.level}`;
+        e.innerHTML = `<span class="log-msg">${esc(entry.message)}</span>`;
+        entries.appendChild(e);
+        entries.scrollTop = entries.scrollHeight;
+      },
+
+      onComplete: (data) => {
+        hide('btn-stop-companies-delete-csv');
+        hide('companies-delete-csv-running');
+        show('companies-delete-csv-results');
+        setText('companies-delete-csv-run-title', 'Deletion complete');
+        const hasErrors = data.errors > 0;
+        const alertClass = hasErrors ? 'alert-warn' : 'alert-ok';
+        const icon = hasErrors ? '⚠️' : '✅';
+        $('companies-delete-csv-summary-alert').innerHTML = `
+          <div class="alert ${alertClass}"><span class="alert-icon">${icon}</span>
+          <span>${data.deleted} deleted · ${data.errors} error(s) · ${data.total} in CSV</span></div>`;
+      },
+
+      onError: (msg) => {
+        hide('btn-stop-companies-delete-csv');
+        hide('companies-delete-csv-running');
+        show('companies-delete-csv-results');
+        setText('companies-delete-csv-run-title', 'Deletion failed');
+        $('companies-delete-csv-summary-alert').innerHTML = `<div class="alert alert-danger"><span class="alert-icon">⚠️</span><span>${esc(msg)}</span></div>`;
+      },
+    }
+  );
+}
+
+function setCompaniesDeleteCSVProgress(msg, pct) {
+  setText('companies-delete-csv-progress-msg', msg);
+  setText('companies-delete-csv-progress-pct', `${pct}%`);
+  $('companies-delete-csv-progress-bar').style.width = `${pct}%`;
+}
+
+$('btn-stop-companies-delete-csv').addEventListener('click', () => {
+  if (companiesDeleteController) { companiesDeleteController.abort(); companiesDeleteController = null; }
+  hide('btn-stop-companies-delete-csv');
+});
+
+$('btn-companies-delete-csv-again').addEventListener('click', () => {
+  companiesDeleteParsedCSV = null;
+  companiesDeleteFileInput.value = '';
+  hide('companies-delete-csv-step-confirm');
+  hide('companies-delete-csv-step-run');
+});
+
+// ══════════════════════════════════════════════════════════
+// COMPANIES — Delete All
+// ══════════════════════════════════════════════════════════
+
+let companiesDeleteAllController = null;
+
+$('companies-delete-all-confirm-input').addEventListener('input', (e) => {
+  $('btn-companies-delete-all-run').disabled = e.target.value.trim() !== 'DELETE';
+});
+
+$('btn-companies-delete-all-run').addEventListener('click', () => {
+  if ($('companies-delete-all-confirm-input').value.trim() !== 'DELETE') return;
+  startCompaniesDeleteAll();
+});
+
+function startCompaniesDeleteAll() {
+  hide('companies-delete-all-idle');
+  show('companies-delete-all-running');
+  hide('companies-delete-all-results');
+  setCompaniesDeleteAllProgress('Starting…', 0);
+
+  $('companies-delete-all-log-entries').innerHTML = '';
+  hide('companies-delete-all-live-log');
+
+  companiesDeleteAllController = subscribeSSE(
+    '/api/companies/delete/all',
+    {},
+    {
+      onProgress: ({ message, percent }) => setCompaniesDeleteAllProgress(message, percent),
+
+      onLog: (entry) => {
+        const logEl = $('companies-delete-all-live-log');
+        const entries = $('companies-delete-all-log-entries');
+        if (logEl.classList.contains('hidden')) show('companies-delete-all-live-log');
+        const e = document.createElement('div');
+        e.className = `log-entry ${entry.level}`;
+        e.innerHTML = `<span class="log-msg">${esc(entry.message)}</span>`;
+        entries.appendChild(e);
+        entries.scrollTop = entries.scrollHeight;
+      },
+
+      onComplete: (data) => {
+        hide('companies-delete-all-running');
+        show('companies-delete-all-results');
+        const hasErrors = data.errors > 0;
+        const alertClass = hasErrors ? 'alert-warn' : 'alert-ok';
+        const icon = hasErrors ? '⚠️' : '✅';
+        $('companies-delete-all-summary-alert').innerHTML = `
+          <div class="alert ${alertClass}"><span class="alert-icon">${icon}</span>
+          <span>${data.deleted} companies deleted · ${data.errors} error(s)</span></div>`;
+      },
+
+      onError: (msg) => {
+        hide('companies-delete-all-running');
+        show('companies-delete-all-results');
+        $('companies-delete-all-summary-alert').innerHTML = `<div class="alert alert-danger"><span class="alert-icon">⚠️</span><span>${esc(msg)}</span></div>`;
+      },
+    }
+  );
+}
+
+function setCompaniesDeleteAllProgress(msg, pct) {
+  setText('companies-delete-all-progress-msg', msg);
+  setText('companies-delete-all-progress-pct', `${pct}%`);
+  $('companies-delete-all-progress-bar').style.width = `${pct}%`;
+}
+
+$('btn-companies-delete-all-again').addEventListener('click', () => {
+  $('companies-delete-all-confirm-input').value = '';
+  $('btn-companies-delete-all-run').disabled = true;
+  hide('companies-delete-all-running');
+  hide('companies-delete-all-results');
+  show('companies-delete-all-idle');
 });
 
 // ══════════════════════════════════════════════════════════
