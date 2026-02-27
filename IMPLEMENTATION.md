@@ -379,3 +379,102 @@ All Notes routes live in `src/routes/notes.js`.
 - simple notes: `fields.content` is a plain string
 - conversation notes: `fields.content` is an array of message objects → **JSON.stringify** in CSV
 - On import: if content column is a JSON string starting with `[`, it is sent as-is to v1 (v1 accepts JSON string for conversation content)
+
+---
+
+## Entities importer (Cloud Run) — implementation plan
+
+### Objectives & scope
+- Rebuild the legacy Apps Script importer with the existing Cloud Run stack (Express API + SSE + vanilla JS UI) while keeping behavior parity for objectives → releases.
+- Operate on CSV inputs only (no multi-sheet XLSX) and mirror the companies/notes mapping workflow so users stay in a familiar flow.
+- Preserve key workflows: per-entity imports/exports, “import all” multi-entity runs, relationships-only pass, and the UUID → type+number migration helper.
+
+### Source-of-truth inputs
+1. **Per-entity CSVs**: each entity type gets its own CSV with a single header row using human-readable format: `Field Name [FieldType] [fieldUuid]`. Canonical key format (`custom__{id}`) is internal only — the mapping UI translates headers to API fields. Standard columns (`ext_key`, `pb_id`, `title`, `archived`, `phase`, `health`, `workProgress`, etc.) use fixed labels. Import preview/run expect one CSV per entity. The importer accepts:
+   - A single entity run (one CSV upload + mapping).
+   - A multi-entity run where the user supplies multiple CSVs in one request (one file picker per entity in the UI). Backend processes the subset supplied while respecting dependency order.
+2. **Templates**: server exposes download endpoints that emit ready-to-edit CSVs per entity. Each single-entity template downloads as `entities-template-{entity}.csv` (e.g., `entities-template-features.csv`). “Download all templates” returns `pb-tools-entities-templates-{YYYYMMDD-HHmm}.zip` containing those CSVs plus a manifest. No spreadsheet validation rows. Each header cell follows `Field Name [FieldType] [fieldUuid]` (e.g., `Business Value [Number] [8b54dcf8-4b1e-4550-b490-d7f985c734e8]`) so users can cross-reference Productboard UI labels/types.
+3. **Entity metadata & configs**: port `ENT`, `TYPE_CODE`, `ENTITY_STATUS_DEFINITIONS`, and type abbreviation map (feature→FEAT, etc.) into `meta.js`. Config is fetched per-request (no TTL cache): `GET /v2/entities/configurations/{type}` (v2) + `GET /hierarchy-entities/custom-fields?type=dropdown|multi-dropdown` (v1) + `GET /feature-statuses` (v1). These power template generation, validators, and import payload builders.
+
+### Backend architecture
+1. **Routes** (`src/routes/entities.js`):
+   - `POST /api/entities/preview` — body `{ files, mappings, options }`. Returns validation errors grouped by entity + row + field. Fetches config (two-pass v2+v1) to validate select field values.
+   - `POST /api/entities/run` — same payload; streams SSE progress/logs, enforces entity processing order, reports per-entity stats. SSE `complete` includes `newIdsCsv` (CSV string, not a token) when ext_key auto-generation is enabled.
+   - `POST /api/entities/relationships` — same CSV payload as `/run`; runs relationship pass only (upsert skipped). User re-uploads CSVs; mappings pre-filled from localStorage.
+   - `POST /api/entities/normalize-keys` — pure CSV transform, no API calls. Accepts CSV + workspace code; returns CSV with UUID ext_keys rewritten to `WORKSPACE-TYPE-NNN`. Used for pre-import migration cleanup.
+   - `GET /api/entities/templates/:type` — download one CSV template (human-readable headers); `GET /api/entities/templates.zip` bundles all entity templates.
+   - `POST /api/entities/export/:type` — SSE export for one entity type; CSV string in `complete` event, downloaded client-side. `migrationMode` flag in body rewrites relationship columns to ext_key strings.
+   - `POST /api/entities/export-all` — SSE job; sequentially exports all types, optionally in migration mode; returns `pb-tools-entities-export-{YYYYMMDD-HHmm}.zip`.
+2. **Services** (`src/services/entities/`):
+   - `meta.js`: ENT ordering, status definitions, column presets, type abbreviation map (feature→FEAT, objective→OBJ, etc.).
+   - `configCache.js`: per-request two-pass fetch — `GET /v2/entities/configurations/{type}` v2 + `GET /hierarchy-entities/custom-fields?type=dropdown|multi-dropdown` v1 + `GET /feature-statuses` v1. No in-memory TTL.
+   - `csvParser.js`: PapaParse wrapper, normalizes rows, trims values, coerces numbers/dates.
+   - `validator.js`: enforces required columns, duplicate ext_keys, select/multi-select value validation against config (blocks on unallowed), parent resolution pre-check (hard error for unresolvable CREATE parents), skips status validation for objective/keyResult/initiative/release.
+   - `importCoordinator.js`: orchestrates per-entity queues in dependency order (objectives → releases), seeds idCache in preflight from CSV `pb_id` columns, shares ID caches between entity files, attaches SSE events, emits row count warning at 50k rows.
+   - `fieldBuilder.js`: builds create/patch payloads. Both PATCH shapes (`{ data: { fields } }` for set, `{ data: { patch: [...] } }` for addItems/removeItems). Entity-type branching for `team`/`teams`. `bypassEmptyCells` applied per-field. Handles `archived`, `phase`, `health`, `workProgress`. HTML sanitization with allowed tag set; `bypassHtmlFormatter` skips it. Ref: `mainLogicImporter.gs:buildFieldsObject_`, `buildPatchOperations_`.
+   - `relationWriter.js`: `PUT /v2/entities/{id}/relationships/parent` for parent; `POST` for connected. Swallows 409s. Ref: `mainLogicImporter.gs:writeRelations_`.
+   - `idCache.js`: ext_key → pb_id map. Pre-seeded in preflight from CSV rows with both `ext_key` and `pb_id`. No live PB lookup fallback.
+   - `templateBuilder.js`: generates CSV header strings in `Field Name [FieldType] [fieldUuid]` format from config; `buildAllTemplatesZip()` uses `archiver`.
+   - `exporter.js`: uses `POST /v2/entities/search` + cursor pagination. Reads relationship data inline if available; else fetches per-entity in batches of 20. Normal mode: relationship columns = UUIDs. Migration mode: relationship columns = ext_key strings. Warns at 50k rows.
+   - `migrationHelper.js`: (1) export mode — rewrite UUID ext_keys to `WORKSPACE-TYPE-NNN` and adjust relationship columns; (2) normalize mode — pure CSV transform for `normalize-keys` endpoint, no API calls.
+3. **Shared utilities**: keep using existing SSE + pbClient helpers; extend the HTML sanitizer when needed; store multi-entity upload metadata in memory per request to keep state simple.
+
+### Import pipeline blueprint
+1. **Preflight**
+   - Receive `{ files, mappings, options }`, reject if no files provided.
+   - Parse each CSV independently, attach `_entityType`, `_row`, `_fileName`.
+   - Fetch config for all entity types present (two-pass v2+v1 per request).
+   - **Seed idCache** from all CSV rows where both `ext_key` and `pb_id` are present before any upsert begins.
+2. **Validation phase**
+   - Run `validator` per entity; accumulate issues into `{ entity, fileName, row, field, message }`.
+   - Stop run if any blocking errors exist; warnings bubble up but do not block.
+3. **Execution phase**
+   - Determine execution order: objectives → keyResults → initiatives → products → components → features → subfeatures → releaseGroups → releases.
+   - For each entity with provided CSV:
+     - Build/create/patch rows: `pb_id` present → PATCH; no `pb_id` → CREATE.
+     - **Parent rules:** CREATE without resolvable parent → hard validation error (blocked). PATCH with empty parent column → existing parent unchanged. PATCH with parent column value → PUT new parent (allows reparenting). UUID parent references passed directly to API.
+     - Buffer pb_id assignments for newly created ext_keys. If `autoGenerateExtKeys` is enabled, generate `ABBREV-{entity_number}` from each PB response and buffer for `newIdsCsv`.
+     - Share ID cache across entity types so later files can resolve parents created earlier in the same run.
+   - Track per-entity metrics and emit SSE logs (start/finish for each file + row-level warnings).
+4. **Relationship + migration pass**
+   - After upserts, run `relationWriter` for parent + connected links, respecting requirements (component/feature/subfeature/release parents).
+   - Offer optional `migrationHelper` action that rekeys ext_keys and exports the mapping so cross-workspace migrations preserve relationships.
+5. **Completion**
+   - SSE `complete` payload includes `summary`, `perEntityStats`, `newIdsCsv` (CSV string embedded directly in the event; absent if no new entities were created — frontend downloads via `Blob` + `URL.createObjectURL`), and `warnings`.
+
+### Frontend integration plan
+1. **Card + sidebar**
+   - Activate the Entities card + `#sidebar-entities` nav grouping once backend endpoints exist. Provide nav buttons for `Import`, `Export`, `Templates`, `Migration`, and `Relationships`.
+2. **Import UI**
+   - File picker grid (one per entity type). Each picker shows status pill (no file / file name + row count). Row count warning shown inline if file exceeds 50,000 rows.
+   - **Tabbed mapping UI**: one tab per uploaded entity type. Tab header: entity name, file name, row count, status pill (valid/warnings/errors/unmapped). Active tab shows column mapping drawer (reuses companies/notes component). Allowed select values shown as helper text per mapped field. Mappings persisted in `localStorage` keyed by entity type + column name.
+   - Shared options panel: multi-select mode radio, bypass empty cells toggle, bypass HTML formatter toggle, `fiscal_year_start_month` input (1–12, default 1), "Auto-generate ext_keys" checkbox + workspace code field.
+   - Buttons: `Validate selected` (calls preview; surfaces errors in mapping tabs) and `Run import` (SSE). Live log panel + per-entity summary table on completion.
+3. **Export UI**
+   - Per-entity export buttons trigger `POST /api/entities/export/:type` (SSE); CSV delivered in `complete` event and downloaded client-side. Consistent with export-all.
+   - “Export all entities” → SSE job returning ZIP.
+   - “Migration mode” toggle: when enabled, relationship columns are rewritten to ext_key strings (`WORKSPACE-TYPE-NNN`) instead of PB UUIDs. Workspace code field required. Helper copy explains cross-workspace import use case.
+4. **Templates UI**
+   - Buttons to download single-entity CSV templates and a “Download all templates (ZIP)” shortcut.
+5. **Migration UI**
+   - “Migration mode” toggle for exports (linked to Export view).
+   - “Normalize ext_keys” action: user uploads CSV + enters workspace code; `POST /api/entities/normalize-keys` returns transformed CSV with UUID ext_keys rewritten to `WORKSPACE-TYPE-NNN`. Pure CSV transform, no API calls.
+6. **Relationships UI**
+   - File picker grid (same layout as Import view) for re-uploading CSVs. Mappings pre-filled from `localStorage`. Entity type checklist + “Select all.” “Fix relationships” CTA triggers `POST /api/entities/relationships` SSE — only relationship pass runs (upsert skipped). 409s logged as “already linked.”
+7. **Progress + logs**
+   - Reuse live log panel; include per-entity subsections so multi-file runs remain understandable. Display dependency order and highlight entities skipped due to missing files.
+
+### Rate limit & concurrency strategy
+- Reuse the existing `pbClient` throttle + retry logic from companies/notes: sequential requests per Cloud Run instance with adaptive delay (`minDelay` 20 ms, slower when remaining quota <20) and exponential backoff (up to 6 attempts) on 429/5xx.
+- Import/export loops run row-by-row (no parallel API calls) to ensure the shared ID cache stays consistent and PB rate limits stay predictable.
+- If future workloads demand more throughput, we can add an env-driven concurrency cap to process multiple entities in parallel, but the default plan keeps the safer single-worker execution model.
+
+### Delivery phases
+1. **Metadata & templates**: add `archiver` dependency; port entity constants/meta (including type abbreviation map) to `meta.js`; build per-request config fetch helper; implement template endpoints (single + ZIP). Unblocks template downloads immediately.
+2. **Validator & preview endpoint**: build `csvParser.js` + `validator.js` (two-pass config fetch, select value validation, parent resolution pre-check); add `/api/entities/preview` and `POST /api/entities/normalize-keys`; wire Import view with tabbed mapping UI, allowed-value hints, and shared options panel.
+3. **Importer SSE + relationships**: implement `idCache.js` (preflight seeding), `importCoordinator.js`, `fieldBuilder.js` (both PATCH shapes, team branching, archived/phase/health/workProgress), `relationWriter.js` (PUT parent, POST connected, 409 swallow); add `/api/entities/run` + `/api/entities/relationships`; implement ext_key auto-generation; expose SSE logs + Relationships view.
+4. **Exporters**: implement `exporter.js` (`POST /v2/entities/search` + cursor pagination; inline vs separate relationship fetch verified against live API); add `POST /api/entities/export/:type` + `POST /api/entities/export-all`; wire Export view.
+5. **Migration + launch**: integrate `migrationHelper.js` export mode (ext_key and relationship rewriting); wire Migration view "Normalize ext_keys" action; QA with real CSV fixtures; activate Entities card.
+
+### Reference implementation
+- Legacy Google Apps Script logic lives under `importer-exporter Entities/` in this repo. Use it as a behavioral reference (validation rules, relationship ordering, migration helper details) whenever requirements are unclear, and confirm any ambiguities directly with the stakeholder before diverging.
